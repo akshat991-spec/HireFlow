@@ -1,25 +1,26 @@
 export enum Role {
-  RECRUITER = 'recruiter',
-  INTERVIEWER = 'interviewer',
-}
-
-export enum Stage {
-  APPLIED = 'Applied',
-  SCREENING = 'Screening',
-  INTERVIEW = 'Interview',
-  OFFER = 'Offer',
-  HIRED = 'Hired',
+  RECRUITER = 'RECRUITER',
+  INTERVIEWER = 'INTERVIEWER',
 }
 
 export enum OpeningStatus {
-  ACTIVE = 'active',
-  ARCHIVED = 'archived',
+  OPEN = 'OPEN',
+  ARCHIVED = 'ARCHIVED',
+}
+
+export enum Stage {
+  APPLIED = 'APPLIED',
+  SCREENING = 'SCREENING',
+  INTERVIEW = 'INTERVIEW',
+  OFFER = 'OFFER',
+  HIRED = 'HIRED',
+  REJECTED = 'REJECTED',
 }
 
 export interface User {
   id: string;
-  email: string;
   name: string;
+  email: string;
   role: Role;
   created_at: string;
 }

@@ -1,17 +1,23 @@
 export enum Role {
-  RECRUITER = 'recruiter',
-  INTERVIEWER = 'interviewer',
+  RECRUITER = 'RECRUITER',
+  INTERVIEWER = 'INTERVIEWER',
+}
+
+export enum OpeningStatus {
+  OPEN = 'OPEN',
+  ARCHIVED = 'ARCHIVED',
 }
 
 export enum Stage {
-  APPLIED = 'Applied',
-  SCREENING = 'Screening',
-  INTERVIEW = 'Interview',
-  OFFER = 'Offer',
-  HIRED = 'Hired',
+  APPLIED = 'APPLIED',
+  SCREENING = 'SCREENING',
+  INTERVIEW = 'INTERVIEW',
+  OFFER = 'OFFER',
+  HIRED = 'HIRED',
+  REJECTED = 'REJECTED',
 }
 
-export const STAGE_ORDER: readonly Stage[] = [
+export const PROGRESSION_STAGES: readonly Stage[] = [
   Stage.APPLIED,
   Stage.SCREENING,
   Stage.INTERVIEW,
@@ -19,27 +25,24 @@ export const STAGE_ORDER: readonly Stage[] = [
   Stage.HIRED,
 ] as const;
 
-export enum OpeningStatus {
-  ACTIVE = 'active',
-  ARCHIVED = 'archived',
-}
-
 export enum EventType {
-  CREATED = 'created',
-  STAGE_CHANGE = 'stage_change',
-  REJECTED = 'rejected',
-  REINSTATED = 'reinstated',
-  FEEDBACK = 'feedback',
-  INTERVIEWER_ASSIGNED = 'interviewer_assigned',
-  INTERVIEWER_REMOVED = 'interviewer_removed',
+  APPLICATION_CREATED = 'APPLICATION_CREATED',
+  STAGE_CHANGE = 'STAGE_CHANGE',
+  REJECTION = 'REJECTION',
+  REINSTATEMENT = 'REINSTATEMENT',
+  INTERVIEWER_FEEDBACK = 'INTERVIEWER_FEEDBACK',
+  INTERVIEWER_ASSIGNED = 'INTERVIEWER_ASSIGNED',
+  INTERVIEWER_REMOVED = 'INTERVIEWER_REMOVED',
 }
 
 export interface User {
   id: string;
-  email: string;
   name: string;
+  email: string;
+  password_hash: string;
   role: Role;
   created_at: Date;
+  updated_at: Date;
 }
 
 export interface JobOpening {
@@ -60,11 +63,17 @@ export interface Application {
   source: string;
   notes?: string | null;
   current_stage: Stage;
+  applied_date: Date;
   stage_entered_at: Date;
-  is_rejected: boolean;
   rejected_from_stage?: Stage | null;
   created_at: Date;
   updated_at: Date;
+}
+
+export interface ApplicationInterviewer {
+  application_id: string;
+  user_id: string;
+  assigned_at: Date;
 }
 
 export interface TimelineEvent {
@@ -76,6 +85,15 @@ export interface TimelineEvent {
   new_stage?: Stage | null;
   note_content?: string | null;
   created_at: Date;
+}
+
+export interface StalledAlertDismissal {
+  id: string;
+  application_id: string;
+  user_id: string;
+  stage: Stage;
+  stage_entered_at: Date;
+  dismissed_at: Date;
 }
 
 export interface ApiResponse<T = unknown> {
