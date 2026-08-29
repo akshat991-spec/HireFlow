@@ -27,17 +27,20 @@ export function createApp(): Express {
   // Mount API router
   app.use('/api', apiRouter);
 
-  // Serve static frontend files if directory exists
-  const frontendDir = path.resolve(__dirname, '../frontend');
-  if (fs.existsSync(frontendDir)) {
-    app.use('/static', express.static(frontendDir));
+  // Serve static frontend in production (dist/public) or fallback to frontend/
+  const prodPublicDir = path.resolve(process.cwd(), 'dist/public');
+  const devFrontendDir = path.resolve(process.cwd(), 'frontend');
+  const staticDir = fs.existsSync(prodPublicDir) ? prodPublicDir : devFrontendDir;
+
+  if (fs.existsSync(staticDir)) {
+    app.use(express.static(staticDir));
 
     // Client-side fallback for SPA routing
     app.get('*', (req, res, next) => {
       if (req.path.startsWith('/api')) {
         return next();
       }
-      const indexPath = path.join(frontendDir, 'index.html');
+      const indexPath = path.join(staticDir, 'index.html');
       if (fs.existsSync(indexPath)) {
         return res.sendFile(indexPath);
       }
@@ -45,7 +48,7 @@ export function createApp(): Express {
     });
   }
 
-  // 404 handler for unmatched routes
+  // 404 handler for unmatched API routes
   app.use(notFoundHandler);
 
   // Centralized error handler
