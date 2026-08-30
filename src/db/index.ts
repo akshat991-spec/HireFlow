@@ -73,3 +73,142 @@ export async function checkDbHealth(): Promise<{ status: 'connected' | 'disconne
 export async function closePool(): Promise<void> {
   await pool.end();
 }
+
+export async function initInMemoryDb(): Promise<void> {
+  const { newDb } = await import('pg-mem');
+  const fs = await import('fs');
+  const path = await import('path');
+  const { fileURLToPath } = await import('url');
+  const { AuthService } = await import('../services/auth.service.js');
+  const { Role, Stage, OpeningStatus } = await import('../types/index.js');
+
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+
+  const memDb = newDb();
+  const schemaPath = path.join(__dirname, 'schema.sql');
+  const schemaSql = fs.readFileSync(schemaPath, 'utf-8');
+  memDb.public.none(schemaSql);
+
+  const { Pool: MemPool } = memDb.adapters.createPg();
+  const memPool = new MemPool();
+  setPool(memPool);
+
+  // Seed default demo accounts
+  const passwordHash = await AuthService.hashPassword('password123');
+  const users = [
+    {
+      id: 'usr_recruiter_01',
+      name: 'Sarah Connor',
+      email: 'recruiter@hireflow.test',
+      role: Role.RECRUITER,
+    },
+    {
+      id: 'usr_interviewer_01',
+      name: 'Alex Rivera',
+      email: 'interviewer@hireflow.test',
+      role: Role.INTERVIEWER,
+    },
+    {
+      id: 'usr_interviewer_02',
+      name: 'Elena Rostova',
+      email: 'interviewer2@hireflow.test',
+      role: Role.INTERVIEWER,
+    },
+  ];
+
+  for (const u of users) {
+    await query(
+      `INSERT INTO users (id, name, email, password_hash, role)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [u.id, u.name, u.email, passwordHash, u.role]
+    );
+  }
+
+  // Seed sample openings
+  const openings = [
+    {
+      id: 'job_eng_01',
+      title: 'Senior Full Stack Engineer',
+      department: 'Engineering',
+      description: 'Lead backend and frontend architecture using Node.js, TypeScript, and React.',
+      status: OpeningStatus.OPEN,
+    },
+    {
+      id: 'job_prod_01',
+      title: 'Senior Product Manager',
+      department: 'Product',
+      description: 'Drive pipeline and platform product roadmap.',
+      status: OpeningStatus.OPEN,
+    },
+    {
+      id: 'job_design_01',
+      title: 'Lead Product Designer',
+      department: 'Design',
+      description: 'Craft user-centric interfaces and design systems.',
+      status: OpeningStatus.OPEN,
+    },
+  ];
+
+  for (const j of openings) {
+    await query(
+      `INSERT INTO job_openings (id, title, department, description, status)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [j.id, j.title, j.department, j.description, j.status]
+    );
+  }
+
+  // Seed sample applications
+  const applications = [
+    {
+      id: 'app_cand_01',
+      job_opening_id: 'job_eng_01',
+      candidate_name: 'David Kim',
+      candidate_email: 'david.kim@example.com',
+      source: 'LinkedIn',
+      notes: 'Strong distributed systems experience.',
+      current_stage: Stage.INTERVIEW,
+    },
+    {
+      id: 'app_cand_02',
+      job_opening_id: 'job_eng_01',
+      candidate_name: 'Maya Patel',
+      candidate_email: 'maya.patel@example.com',
+      source: 'Referral',
+      notes: 'Excellent frontend and UI design instincts.',
+      current_stage: Stage.SCREENING,
+    },
+    {
+      id: 'app_cand_03',
+      job_opening_id: 'job_prod_01',
+      candidate_name: 'Marcus Vance',
+      candidate_email: 'marcus.v@example.com',
+      source: 'Direct',
+      notes: 'Former fintech PM with high analytical rigor.',
+      current_stage: Stage.OFFER,
+    },
+    {
+      id: 'app_cand_04',
+      job_opening_id: 'job_design_01',
+      candidate_name: 'Sophia Chen',
+      candidate_email: 'sophia.chen@example.com',
+      source: 'LinkedIn',
+      notes: 'Portfolio review was outstanding.',
+      current_stage: Stage.APPLIED,
+    },
+  ];
+
+  for (const a of applications) {
+    await query(
+      `INSERT INTO applications (id, job_opening_id, candidate_name, candidate_email, source, notes, current_stage)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [a.id, a.job_opening_id, a.candidate_name, a.candidate_email, a.source, a.notes, a.current_stage]
+    );
+  }
+
+  // Assign Alex Rivera to app_cand_01 and app_cand_02
+  await query(
+    `INSERT INTO application_interviewers (application_id, user_id)
+     VALUES ('app_cand_01', 'usr_interviewer_01'), ('app_cand_02', 'usr_interviewer_01')`
+  );
+}

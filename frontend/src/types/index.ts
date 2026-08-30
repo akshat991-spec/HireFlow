@@ -17,12 +17,38 @@ export enum Stage {
   REJECTED = 'REJECTED',
 }
 
+export const PROGRESSION_STAGES: readonly Stage[] = [
+  Stage.APPLIED,
+  Stage.SCREENING,
+  Stage.INTERVIEW,
+  Stage.OFFER,
+  Stage.HIRED,
+] as const;
+
+export enum EventType {
+  APPLICATION_CREATED = 'APPLICATION_CREATED',
+  STAGE_CHANGE = 'STAGE_CHANGE',
+  REJECTION = 'REJECTION',
+  REINSTATEMENT = 'REINSTATEMENT',
+  INTERVIEWER_FEEDBACK = 'INTERVIEWER_FEEDBACK',
+  INTERVIEWER_ASSIGNED = 'INTERVIEWER_ASSIGNED',
+  INTERVIEWER_REMOVED = 'INTERVIEWER_REMOVED',
+}
+
 export interface User {
   id: string;
   name: string;
   email: string;
   role: Role;
   created_at: string;
+}
+
+export interface UserPublic {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  created_at?: string;
 }
 
 export interface JobOpening {
@@ -53,6 +79,21 @@ export interface Application {
   updated_at: string;
   job_title?: string;
   department?: string;
+  interviewers?: UserPublic[];
+}
+
+export interface TimelineEvent {
+  id: string;
+  application_id: string;
+  event_type: EventType;
+  actor_id: string;
+  old_stage?: Stage | null;
+  new_stage?: Stage | null;
+  note_content?: string | null;
+  created_at: string;
+  actor_name?: string;
+  actor_email?: string;
+  actor_role?: Role;
 }
 
 export interface ApiResponse<T = unknown> {

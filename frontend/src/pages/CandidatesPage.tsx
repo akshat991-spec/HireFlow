@@ -1,28 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Users,
   Search,
   Plus,
   Filter,
-  UserCheck,
   Eye,
   Edit2,
-  Briefcase,
   Calendar,
   AlertCircle,
   ShieldCheck,
-  Tag,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
   ChevronLeft,
   ChevronRight,
   RotateCcw,
   FastForward,
   UserX,
-  CheckSquare,
-  Square,
-  MinusSquare,
   Download,
   CheckCircle2,
 } from 'lucide-react';
@@ -35,17 +25,16 @@ import {
   BulkActionResultsModal,
   BulkActionSummaryData,
 } from '../components/Applications/BulkActionResultsModal.js';
+import { StageProgressionBar } from '../components/Applications/StageProgressionBar.js';
 
-const STAGE_COLORS: Record<Stage, { bg: string; text: string; border: string }> = {
-  [Stage.APPLIED]: { bg: 'rgba(59, 130, 246, 0.15)', text: '#93c5fd', border: 'rgba(59, 130, 246, 0.3)' },
-  [Stage.SCREENING]: { bg: 'rgba(139, 92, 246, 0.15)', text: '#c4b5fd', border: 'rgba(139, 92, 246, 0.3)' },
-  [Stage.INTERVIEW]: { bg: 'rgba(14, 165, 233, 0.15)', text: '#7dd3fc', border: 'rgba(14, 165, 233, 0.3)' },
-  [Stage.OFFER]: { bg: 'rgba(245, 158, 11, 0.15)', text: '#fcd34d', border: 'rgba(245, 158, 11, 0.3)' },
-  [Stage.HIRED]: { bg: 'rgba(16, 185, 129, 0.15)', text: '#6ee7b7', border: 'rgba(16, 185, 129, 0.3)' },
-  [Stage.REJECTED]: { bg: 'rgba(239, 68, 68, 0.15)', text: '#fca5a5', border: 'rgba(239, 68, 68, 0.3)' },
-};
+const COMMON_SOURCES = ['LinkedIn', 'Referral', 'Direct', 'Direct Agency', 'Career Portal', 'Agency', 'GitHub'];
 
-const COMMON_SOURCES = ['LinkedIn', 'Referral', 'Direct', 'Career Portal', 'Agency', 'GitHub', 'Inbound'];
+function getCandidateInitials(name: string): string {
+  if (!name) return 'C';
+  const parts = name.trim().split(' ');
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 export const CandidatesPage: React.FC = () => {
   const { currentUser } = useAuth();
@@ -73,6 +62,11 @@ export const CandidatesPage: React.FC = () => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [bulkSummaryData, setBulkSummaryData] = useState<BulkActionSummaryData | null>(null);
+
+  // CSV Export State
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportSuccess, setExportSuccess] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   // Modals
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
@@ -135,7 +129,7 @@ export const CandidatesPage: React.FC = () => {
 
   useEffect(() => {
     fetchApplications();
-    setSelectedIds([]); // Clear selection when filters or pagination changes
+    setSelectedIds([]);
   }, [search, stageFilter, openingFilter, sourceFilter, sortBy, sortOrder, page, pageSize, currentUser]);
 
   const handleResetFilters = () => {
@@ -220,11 +214,7 @@ export const CandidatesPage: React.FC = () => {
     }
   };
 
-  // CSV Export State
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportSuccess, setExportSuccess] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
-
+  // CSV Export handler
   const handleExportCsv = async () => {
     setIsExporting(true);
     setExportError(null);
@@ -284,38 +274,26 @@ export const CandidatesPage: React.FC = () => {
   const isSomeSelected = selectedIds.length > 0 && selectedIds.length < applications.length;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'relative' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', position: 'relative' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.25rem' }}>
-            {isInterviewer ? 'My Applications' : 'Candidates & Pipeline'}
+          <h1 className="page-title">
+            {isInterviewer ? 'My Applications' : 'Applications'}
           </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            {isInterviewer
-              ? `Showing candidates assigned to you (${currentUser?.name}) across all hiring pipelines.`
-              : 'Search, filter, sort, advance, and manage candidate applications across all accessible job openings.'}
-          </p>
+          <div className="page-subtitle-tracked">
+            SHOWING {totalCount} TOTAL CANDIDATES
+          </div>
         </div>
 
         {isRecruiter && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <button
-              className="btn btn-secondary"
-              onClick={handleExportCsv}
-              disabled={isExporting}
-              title="Export all open job opening applications to CSV"
-            >
-              <Download size={17} />
-              <span>{isExporting ? 'Exporting...' : 'Export CSV'}</span>
-            </button>
-
-            <button
               className="btn btn-primary"
               onClick={handleCreateNewApp}
               disabled={openings.length === 0}
             >
-              <Plus size={18} />
+              <Plus size={17} />
               <span>Add Candidate</span>
             </button>
           </div>
@@ -329,9 +307,9 @@ export const CandidatesPage: React.FC = () => {
             display: 'flex',
             alignItems: 'center',
             gap: '0.75rem',
-            backgroundColor: 'rgba(16, 185, 129, 0.15)',
-            border: '1px solid var(--success)',
-            color: '#6ee7b7',
+            backgroundColor: '#ecfdf5',
+            border: '1px solid #a7f3d0',
+            color: '#047857',
             padding: '0.75rem 1rem',
             borderRadius: 'var(--radius-md)',
             fontSize: '0.875rem',
@@ -348,9 +326,9 @@ export const CandidatesPage: React.FC = () => {
             display: 'flex',
             alignItems: 'center',
             gap: '0.75rem',
-            backgroundColor: 'rgba(239, 68, 68, 0.15)',
-            border: '1px solid var(--danger)',
-            color: '#fca5a5',
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            color: '#b91c1c',
             padding: '0.75rem 1rem',
             borderRadius: 'var(--radius-md)',
             fontSize: '0.875rem',
@@ -368,11 +346,11 @@ export const CandidatesPage: React.FC = () => {
             display: 'flex',
             alignItems: 'center',
             gap: '0.75rem',
-            backgroundColor: 'rgba(14, 165, 233, 0.1)',
-            border: '1px solid rgba(14, 165, 233, 0.3)',
+            backgroundColor: '#f0f9ff',
+            border: '1px solid #bae6fd',
             borderRadius: 'var(--radius-md)',
             padding: '0.85rem 1.25rem',
-            color: 'var(--secondary)',
+            color: '#0369a1',
             fontSize: '0.875rem',
           }}
         >
@@ -387,32 +365,33 @@ export const CandidatesPage: React.FC = () => {
       {isRecruiter && selectedIds.length > 0 && (
         <div
           style={{
-            backgroundColor: 'var(--bg-card)',
-            border: '1px solid var(--primary)',
+            backgroundColor: '#ffffff',
+            border: '1px solid #cbd5e1',
             borderRadius: 'var(--radius-md)',
             padding: '0.75rem 1.25rem',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: '1rem',
-            boxShadow: '0 10px 15px -3px rgba(79, 70, 229, 0.2)',
+            boxShadow: 'var(--shadow-md)',
             animation: 'fadeIn 200ms ease',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <span
               style={{
-                backgroundColor: 'var(--primary)',
-                color: 'white',
+                backgroundColor: 'var(--gold-bg)',
+                color: 'var(--gold-light)',
+                border: '1px solid var(--gold-border)',
                 padding: '0.2rem 0.6rem',
                 borderRadius: 'var(--radius-full)',
-                fontWeight: 700,
+                fontWeight: 800,
                 fontSize: '0.8rem',
               }}
             >
               {selectedIds.length}
             </span>
-            <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+            <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#0f172a' }}>
               Candidate{selectedIds.length > 1 ? 's' : ''} Selected
             </span>
           </div>
@@ -438,7 +417,7 @@ export const CandidatesPage: React.FC = () => {
                 fontSize: '0.85rem',
                 gap: '0.4rem',
                 color: 'var(--danger)',
-                borderColor: 'rgba(239, 68, 68, 0.4)',
+                borderColor: '#fca5a5',
               }}
               title="Reject selected candidates"
             >
@@ -457,187 +436,165 @@ export const CandidatesPage: React.FC = () => {
         </div>
       )}
 
-      {/* Multi-Criteria Search & Filter Controls */}
+      {/* Multi-Criteria Search & Filter Controls Bar */}
       <div
+        className="card"
         style={{
+          padding: '0.85rem 1.25rem',
           display: 'flex',
-          flexDirection: 'column',
-          gap: '0.75rem',
-          backgroundColor: 'var(--bg-card)',
-          padding: '1rem',
-          borderRadius: 'var(--radius-md)',
-          border: '1px solid var(--border-color)',
+          gap: '0.85rem',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          backgroundColor: '#ffffff',
+          border: '1px solid #e2e8f0',
         }}
       >
-        {/* Top Row: Search + Filters */}
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          {/* Search Input */}
-          <div style={{ position: 'relative', flex: 2, minWidth: '240px' }}>
-            <Search
-              size={16}
-              style={{
-                position: 'absolute',
-                left: '10px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: 'var(--text-muted)',
-              }}
-            />
-            <input
-              type="text"
-              placeholder="Search candidate name or email..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              style={{
-                width: '100%',
-                padding: '0.5rem 0.75rem 0.5rem 2.2rem',
-                backgroundColor: 'var(--bg-main)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-sm)',
-                color: 'var(--text-primary)',
-                fontSize: '0.875rem',
-                outline: 'none',
-              }}
-            />
-          </div>
-
-          {/* Stage Filter */}
-          <div style={{ flex: 1, minWidth: '140px' }}>
-            <select
-              value={stageFilter}
-              onChange={(e) => {
-                setStageFilter(e.target.value);
-                setPage(1);
-              }}
-              style={{
-                width: '100%',
-                padding: '0.5rem 0.75rem',
-                backgroundColor: 'var(--bg-main)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-sm)',
-                color: 'var(--text-primary)',
-                fontSize: '0.875rem',
-                outline: 'none',
-              }}
-            >
-              <option value="">All Stages</option>
-              <option value={Stage.APPLIED}>Applied</option>
-              <option value={Stage.SCREENING}>Screening</option>
-              <option value={Stage.INTERVIEW}>Interview</option>
-              <option value={Stage.OFFER}>Offer</option>
-              <option value={Stage.HIRED}>Hired</option>
-              <option value={Stage.REJECTED}>Rejected</option>
-            </select>
-          </div>
-
-          {/* Job Opening Filter */}
-          <div style={{ flex: 1.5, minWidth: '180px' }}>
-            <select
-              value={openingFilter}
-              onChange={(e) => {
-                setOpeningFilter(e.target.value);
-                setPage(1);
-              }}
-              style={{
-                width: '100%',
-                padding: '0.5rem 0.75rem',
-                backgroundColor: 'var(--bg-main)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-sm)',
-                color: 'var(--text-primary)',
-                fontSize: '0.875rem',
-                outline: 'none',
-              }}
-            >
-              <option value="">All Job Openings</option>
-              {openings.map((op) => (
-                <option key={op.id} value={op.id}>
-                  {op.title} ({op.department})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Source Filter */}
-          <div style={{ flex: 1, minWidth: '140px' }}>
-            <select
-              value={sourceFilter}
-              onChange={(e) => {
-                setSourceFilter(e.target.value);
-                setPage(1);
-              }}
-              style={{
-                width: '100%',
-                padding: '0.5rem 0.75rem',
-                backgroundColor: 'var(--bg-main)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-sm)',
-                color: 'var(--text-primary)',
-                fontSize: '0.875rem',
-                outline: 'none',
-              }}
-            >
-              <option value="">All Sources</option>
-              {COMMON_SOURCES.map((src) => (
-                <option key={src} value={src}>
-                  {src}
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* Search Input */}
+        <div style={{ position: 'relative', flex: 2.2, minWidth: '240px' }}>
+          <Search
+            size={16}
+            style={{
+              position: 'absolute',
+              left: '12px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: '#94a3b8',
+            }}
+          />
+          <input
+            type="text"
+            placeholder="Search candidates..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            style={{
+              width: '100%',
+              padding: '0.55rem 0.75rem 0.55rem 2.35rem',
+              backgroundColor: '#f8fafc',
+              border: '1px solid #cbd5e1',
+              borderRadius: 'var(--radius-sm)',
+              color: '#0f172a',
+              fontSize: '0.875rem',
+              fontWeight: 500,
+              outline: 'none',
+            }}
+          />
         </div>
 
-        {/* Bottom Row: Sorting + Reset */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-color)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>Sort by:</span>
-            <select
-              value={sortBy}
-              onChange={(e) => {
-                setSortBy(e.target.value);
-                setPage(1);
-              }}
-              style={{
-                padding: '0.35rem 0.65rem',
-                backgroundColor: 'var(--bg-main)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-sm)',
-                color: 'var(--text-primary)',
-                fontSize: '0.825rem',
-                outline: 'none',
-              }}
-            >
-              <option value="applied_date">Applied Date</option>
-              <option value="current_stage">Stage</option>
-              <option value="updated_at">Last Updated</option>
-              <option value="candidate_name">Candidate Name</option>
-            </select>
-
-            <button
-              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              className="btn btn-secondary"
-              style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem' }}
-              title={`Toggle sort order (Currently ${sortOrder.toUpperCase()})`}
-            >
-              {sortOrder === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
-              <span>{sortOrder.toUpperCase()}</span>
-            </button>
-          </div>
-
-          {hasActiveFilters && (
-            <button
-              onClick={handleResetFilters}
-              className="btn btn-secondary"
-              style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem' }}
-            >
-              <RotateCcw size={13} />
-              <span>Reset Filters</span>
-            </button>
-          )}
+        {/* Job Role Filter Pill */}
+        <div style={{ flex: 1.2, minWidth: '150px' }}>
+          <select
+            value={openingFilter}
+            onChange={(e) => {
+              setOpeningFilter(e.target.value);
+              setPage(1);
+            }}
+            style={{
+              width: '100%',
+              padding: '0.55rem 0.85rem',
+              backgroundColor: '#ffffff',
+              border: '1px solid #cbd5e1',
+              borderRadius: 'var(--radius-sm)',
+              color: '#334155',
+              fontSize: '0.85rem',
+              outline: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            <option value="">Job Role ⌵</option>
+            {openings.map((op) => (
+              <option key={op.id} value={op.id}>
+                {op.title}
+              </option>
+            ))}
+          </select>
         </div>
+
+        {/* Stage Filter Pill */}
+        <div style={{ flex: 1, minWidth: '130px' }}>
+          <select
+            value={stageFilter}
+            onChange={(e) => {
+              setStageFilter(e.target.value);
+              setPage(1);
+            }}
+            style={{
+              width: '100%',
+              padding: '0.55rem 0.85rem',
+              backgroundColor: '#ffffff',
+              border: '1px solid #cbd5e1',
+              borderRadius: 'var(--radius-sm)',
+              color: '#334155',
+              fontSize: '0.85rem',
+              outline: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            <option value="">Stage ⌵</option>
+            <option value={Stage.APPLIED}>Applied</option>
+            <option value={Stage.SCREENING}>Screening</option>
+            <option value={Stage.INTERVIEW}>Interview</option>
+            <option value={Stage.OFFER}>Offer Extended</option>
+            <option value={Stage.HIRED}>Hired</option>
+            <option value={Stage.REJECTED}>Rejected</option>
+          </select>
+        </div>
+
+        {/* Source Filter Pill */}
+        <div style={{ flex: 1, minWidth: '130px' }}>
+          <select
+            value={sourceFilter}
+            onChange={(e) => {
+              setSourceFilter(e.target.value);
+              setPage(1);
+            }}
+            style={{
+              width: '100%',
+              padding: '0.55rem 0.85rem',
+              backgroundColor: '#ffffff',
+              border: '1px solid #cbd5e1',
+              borderRadius: 'var(--radius-sm)',
+              color: '#334155',
+              fontSize: '0.85rem',
+              outline: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            <option value="">Source ⌵</option>
+            {COMMON_SOURCES.map((src) => (
+              <option key={src} value={src}>
+                {src}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Export CSV Button */}
+        {isRecruiter && (
+          <button
+            className="btn btn-gold"
+            onClick={handleExportCsv}
+            disabled={isExporting}
+            style={{ padding: '0.5rem 0.95rem', fontSize: '0.85rem', gap: '0.45rem' }}
+            title="Export all active applications to CSV"
+          >
+            <Download size={15} />
+            <span>{isExporting ? 'Exporting...' : 'Export CSV'}</span>
+          </button>
+        )}
+
+        {hasActiveFilters && (
+          <button
+            onClick={handleResetFilters}
+            className="btn btn-secondary"
+            style={{ padding: '0.5rem 0.75rem', fontSize: '0.825rem' }}
+          >
+            <RotateCcw size={13} />
+            <span>Reset</span>
+          </button>
+        )}
       </div>
 
       {/* Error state */}
@@ -647,9 +604,9 @@ export const CandidatesPage: React.FC = () => {
             display: 'flex',
             alignItems: 'center',
             gap: '0.75rem',
-            backgroundColor: 'rgba(239, 68, 68, 0.15)',
-            border: '1px solid var(--danger)',
-            color: '#fca5a5',
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            color: '#b91c1c',
             padding: '1rem',
             borderRadius: 'var(--radius-md)',
           }}
@@ -668,8 +625,8 @@ export const CandidatesPage: React.FC = () => {
 
       {/* Loading Skeleton */}
       {loading ? (
-        <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-          Loading applications...
+        <div className="card" style={{ padding: '3.5rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+          Loading candidates...
         </div>
       ) : applications.length === 0 ? (
         /* Zero Results Empty State */
@@ -689,17 +646,17 @@ export const CandidatesPage: React.FC = () => {
               width: '56px',
               height: '56px',
               borderRadius: 'var(--radius-full)',
-              backgroundColor: 'rgba(79, 70, 229, 0.15)',
+              backgroundColor: '#fffbeb',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: 'var(--primary)',
+              color: '#d97706',
             }}
           >
-            <Users size={28} />
+            <Search size={28} />
           </div>
           <div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.35rem' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.35rem', color: '#0f172a' }}>
               {isInterviewer ? 'No Assigned Applications Found' : 'No Applications Found'}
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '420px', marginBottom: '1rem' }}>
@@ -716,30 +673,25 @@ export const CandidatesPage: React.FC = () => {
           </div>
         </div>
       ) : (
-        /* Candidates Table / Grid */
-        <div
-          className="card"
-          style={{
-            padding: 0,
-            overflow: 'hidden',
-            border: '1px solid var(--border-color)',
-          }}
-        >
+        /* Applications Table */
+        <div className="table-container">
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr
                   style={{
-                    backgroundColor: 'var(--bg-main)',
+                    backgroundColor: '#f8fafc',
                     borderBottom: '1px solid var(--border-color)',
                     color: 'var(--text-muted)',
-                    fontSize: '0.75rem',
+                    fontSize: '0.725rem',
+                    fontFamily: 'var(--font-mono)',
                     textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
+                    letterSpacing: '0.1em',
+                    fontWeight: 700,
                   }}
                 >
                   {isRecruiter && (
-                    <th style={{ padding: '0.85rem 0.75rem 0.85rem 1.25rem', width: '40px' }}>
+                    <th style={{ padding: '1rem 0.75rem 1rem 1.5rem', width: '40px' }}>
                       <input
                         type="checkbox"
                         checked={isAllSelected}
@@ -747,136 +699,121 @@ export const CandidatesPage: React.FC = () => {
                           if (input) input.indeterminate = isSomeSelected;
                         }}
                         onChange={handleToggleSelectAll}
-                        style={{ cursor: 'pointer', transform: 'scale(1.1)' }}
                         title="Select/Deselect All on Current Page"
                       />
                     </th>
                   )}
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Candidate</th>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Job Opening</th>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Current Stage</th>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Source</th>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Interview Panel</th>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Applied Date</th>
-                  <th style={{ padding: '0.85rem 1.25rem', textAlign: 'right' }}>Actions</th>
+                  <th style={{ padding: '1rem 1.25rem' }}>Candidate</th>
+                  <th style={{ padding: '1rem 1.25rem' }}>Job Opening</th>
+                  <th style={{ padding: '1rem 1.25rem', minWidth: '190px' }}>Stage Progression</th>
+                  <th style={{ padding: '1rem 1.25rem' }}>Source</th>
+                  <th style={{ padding: '1rem 1.25rem' }}>Applied Date</th>
+                  <th style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {applications.map((app) => {
-                  const style = STAGE_COLORS[app.current_stage] || STAGE_COLORS[Stage.APPLIED];
-                  const panel = app.interviewers || [];
                   const isSelected = selectedIds.includes(app.id);
+                  const initials = getCandidateInitials(app.candidate_name);
+                  const formattedDate = app.applied_date
+                    ? new Date(app.applied_date).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })
+                    : '—';
 
                   return (
                     <tr
                       key={app.id}
                       style={{
                         borderBottom: '1px solid var(--border-color)',
-                        backgroundColor: isSelected ? 'rgba(79, 70, 229, 0.08)' : undefined,
+                        backgroundColor: isSelected ? '#fffbeb' : undefined,
                         transition: 'background 150ms ease',
                       }}
                       className="table-row-hover"
                     >
                       {/* Checkbox for Recruiter */}
                       {isRecruiter && (
-                        <td style={{ padding: '1rem 0.75rem 1rem 1.25rem' }}>
+                        <td style={{ padding: '1rem 0.75rem 1rem 1.5rem' }}>
                           <input
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => handleToggleSelectOne(app.id)}
-                            style={{ cursor: 'pointer', transform: 'scale(1.1)' }}
                           />
                         </td>
                       )}
 
-                      {/* Candidate Name & Email */}
+                      {/* Candidate: Avatar + Name + Subtitle Role/Email */}
                       <td style={{ padding: '1rem 1.25rem' }}>
-                        <div
-                          style={{ fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}
-                          onClick={() => handleOpenDetail(app.id)}
-                        >
-                          {app.candidate_name}
-                        </div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                          {app.candidate_email}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                          <div
+                            style={{
+                              width: '36px',
+                              height: '36px',
+                              borderRadius: 'var(--radius-sm)',
+                              backgroundColor: '#eff6ff',
+                              border: '1px solid #bfdbfe',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: 700,
+                              fontSize: '0.8rem',
+                              color: '#2563eb',
+                              flexShrink: 0,
+                            }}
+                          >
+                            {initials}
+                          </div>
+                          <div>
+                            <div
+                              style={{
+                                fontWeight: 600,
+                                fontSize: '0.925rem',
+                                color: '#0f172a',
+                                cursor: 'pointer',
+                              }}
+                              onClick={() => handleOpenDetail(app.id)}
+                            >
+                              {app.candidate_name}
+                            </div>
+                            <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                              {app.candidate_email}
+                            </div>
+                          </div>
                         </div>
                       </td>
 
                       {/* Job Opening */}
                       <td style={{ padding: '1rem 1.25rem' }}>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 500, color: '#0f172a' }}>
                           {app.job_title}
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
                           {app.department}
                         </div>
                       </td>
 
-                      {/* Current Stage */}
+                      {/* Stage Progression Stepper Bar */}
                       <td style={{ padding: '1rem 1.25rem' }}>
-                        <span
-                          style={{
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            padding: '0.2rem 0.55rem',
-                            borderRadius: 'var(--radius-full)',
-                            backgroundColor: style.bg,
-                            color: style.text,
-                            border: `1px solid ${style.border}`,
-                            display: 'inline-block',
-                          }}
-                        >
-                          {app.current_stage}
-                          {app.current_stage === Stage.REJECTED && app.rejected_from_stage && (
-                            <span style={{ fontSize: '0.7rem', opacity: 0.8 }}> (from {app.rejected_from_stage})</span>
-                          )}
-                        </span>
+                        <StageProgressionBar
+                          currentStage={app.current_stage}
+                          rejectedFromStage={app.rejected_from_stage}
+                        />
                       </td>
 
                       {/* Source */}
-                      <td style={{ padding: '1rem 1.25rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                      <td style={{ padding: '1rem 1.25rem', fontSize: '0.85rem', color: '#475569' }}>
                         {app.source}
                       </td>
 
-                      {/* Interview Panel */}
-                      <td style={{ padding: '1rem 1.25rem' }}>
-                        {panel.length === 0 ? (
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                            Unassigned
-                          </span>
-                        ) : (
-                          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                            {panel.map((intv) => (
-                              <span
-                                key={intv.id}
-                                title={`${intv.name} (${intv.email})`}
-                                style={{
-                                  fontSize: '0.75rem',
-                                  padding: '0.15rem 0.45rem',
-                                  borderRadius: 'var(--radius-sm)',
-                                  backgroundColor: 'rgba(14, 165, 233, 0.15)',
-                                  color: 'var(--secondary)',
-                                  border: '1px solid rgba(14, 165, 233, 0.3)',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '0.25rem',
-                                }}
-                              >
-                                <UserCheck size={12} />
-                                <span>{intv.name.split(' ')[0]}</span>
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </td>
-
                       {/* Applied Date */}
-                      <td style={{ padding: '1rem 1.25rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                        {app.applied_date ? new Date(app.applied_date).toLocaleDateString() : '—'}
+                      <td style={{ padding: '1rem 1.25rem', fontSize: '0.85rem', color: '#64748b' }}>
+                        {formattedDate}
                       </td>
 
                       {/* Actions */}
-                      <td style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>
+                      <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.35rem' }}>
                           <button
                             title="View Full Profile & Panel"
@@ -909,8 +846,8 @@ export const CandidatesPage: React.FC = () => {
           {/* Footer with Metadata & Pagination Controls */}
           <div
             style={{
-              padding: '0.85rem 1.25rem',
-              backgroundColor: 'var(--bg-main)',
+              padding: '0.85rem 1.5rem',
+              backgroundColor: '#f8fafc',
               borderTop: '1px solid var(--border-color)',
               fontSize: '0.85rem',
               color: 'var(--text-muted)',
@@ -923,13 +860,13 @@ export const CandidatesPage: React.FC = () => {
           >
             {/* Metadata Count */}
             <div>
-              Showing <strong style={{ color: 'var(--text-primary)' }}>{startRecord}–{endRecord}</strong> of <strong style={{ color: 'var(--text-primary)' }}>{totalCount}</strong> applications
+              Showing <strong style={{ color: '#0f172a' }}>{startRecord}–{endRecord}</strong> of <strong style={{ color: '#0f172a' }}>{totalCount}</strong> applications
             </div>
 
             {/* Pagination Actions */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
               {/* Page size selector */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
                 <span style={{ fontSize: '0.8rem' }}>Rows per page:</span>
                 <select
                   value={pageSize}
@@ -939,11 +876,12 @@ export const CandidatesPage: React.FC = () => {
                   }}
                   style={{
                     padding: '0.25rem 0.5rem',
-                    backgroundColor: 'var(--bg-card)',
-                    border: '1px solid var(--border-color)',
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #cbd5e1',
                     borderRadius: 'var(--radius-sm)',
-                    color: 'var(--text-primary)',
+                    color: '#0f172a',
                     fontSize: '0.8rem',
+                    outline: 'none',
                   }}
                 >
                   <option value={10}>10</option>
@@ -963,7 +901,7 @@ export const CandidatesPage: React.FC = () => {
                 >
                   <ChevronLeft size={16} />
                 </button>
-                <span style={{ fontSize: '0.8rem' }}>
+                <span style={{ fontSize: '0.8rem', color: '#475569' }}>
                   Page {page} of {totalPages}
                 </span>
                 <button

@@ -1,19 +1,25 @@
 import { createApp } from './app.js';
 import { config } from './config.js';
-import { checkDbHealth, closePool } from './db/index.js';
+import { checkDbHealth, closePool, initInMemoryDb } from './db/index.js';
 
 const app = createApp();
 
 const server = app.listen(config.port, async () => {
   console.log(`🚀 HireFlow server listening on http://localhost:${config.port} [${config.nodeEnv}]`);
   
-  // Non-blocking database health check on startup
+  // Database health check on startup
   const dbHealth = await checkDbHealth();
   if (dbHealth.status === 'connected') {
     console.log('✅ PostgreSQL database connection established.');
   } else {
-    console.warn(`⚠️ PostgreSQL connection not established at startup: ${dbHealth.error}`);
-    console.warn('ℹ️ Ensure PostgreSQL is running and DATABASE_URL is configured in your environment or .env file.');
+    console.warn(`⚠️ PostgreSQL connection not established: ${dbHealth.error || 'Connection refused'}`);
+    console.log('🚀 Initializing in-memory PostgreSQL instance with full schema & demo seeds...');
+    try {
+      await initInMemoryDb();
+      console.log('✅ In-memory PostgreSQL instance active and seeded with demo accounts.');
+    } catch (memErr) {
+      console.error('Failed to initialize in-memory database:', memErr);
+    }
   }
 });
 
