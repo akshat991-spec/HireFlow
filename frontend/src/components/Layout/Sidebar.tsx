@@ -54,7 +54,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ alertsCount = 0 }) => {
               id="nav-candidates"
             >
               <Users size={18} />
-              <span>Candidates</span>
+              <span>{isRecruiter ? 'Candidates' : 'My Applications'}</span>
             </NavLink>
           </li>
           <li>

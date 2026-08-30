@@ -542,10 +542,13 @@ applicationsRouter.post(
 );
 
 const assignInterviewerSchema = z.object({
-  userId: z.string().min(1, 'Interviewer userId is required'),
+  userId: z.string().optional(),
+  userIds: z.array(z.string().min(1)).optional(),
+}).refine((data) => !!data.userId || (Array.isArray(data.userIds) && data.userIds.length > 0), {
+  message: 'Either userId or userIds must be provided',
 });
 
-// POST /api/applications/:id/interviewers - Assign interviewer to panel (Recruiter only)
+// POST /api/applications/:id/interviewers - Assign one or multiple interviewers to panel (Recruiter only)
 applicationsRouter.post(
   '/:id/interviewers',
   authenticate,
@@ -557,60 +560,90 @@ applicationsRouter.post(
 
       const parseResult = assignInterviewerSchema.safeParse(req.body);
       if (!parseResult.success) {
-        throw new ValidationError('userId is required');
+        throw new ValidationError('userId or userIds array is required');
       }
 
-      const { userId } = parseResult.data;
-
-      // Server-side validation: Verify user exists and has INTERVIEWER role
-      const userRes = await query<UserPublic>(
-        'SELECT id, name, email, role FROM users WHERE id = $1',
-        [userId]
+      const targetIds = Array.from(
+        new Set(
+          parseResult.data.userIds || (parseResult.data.userId ? [parseResult.data.userId] : [])
+        )
       );
 
-      if (userRes.rows.length === 0) {
-        throw new NotFoundError(`User with ID '${userId}' not found`);
+      // Verify all users exist and have INTERVIEWER role
+      const usersToAssign: UserPublic[] = [];
+      for (const uid of targetIds) {
+        const userRes = await query<UserPublic>(
+          'SELECT id, name, email, role FROM users WHERE id = $1',
+          [uid]
+        );
+
+        if (userRes.rows.length === 0) {
+          throw new NotFoundError(`User with ID '${uid}' not found`);
+        }
+
+        const targetUser = userRes.rows[0];
+        if (targetUser.role !== Role.INTERVIEWER) {
+          throw new ValidationError(
+            `Cannot assign user with role '${targetUser.role}'. Only users with the INTERVIEWER role may be assigned to an interview panel.`
+          );
+        }
+        usersToAssign.push(targetUser);
       }
 
-      const targetUser = userRes.rows[0];
-      if (targetUser.role !== Role.INTERVIEWER) {
-        throw new ValidationError(
-          `Cannot assign user with role '${targetUser.role}'. Only users with the INTERVIEWER role may be assigned to an interview panel.`
-        );
-      }
+      // Check existing assignments to prevent duplicates
+      const existingRes = await query<{ user_id: string }>(
+        'SELECT user_id FROM application_interviewers WHERE application_id = $1',
+        [applicationId]
+      );
+      const existingSet = new Set(existingRes.rows.map((r) => r.user_id));
 
       const now = new Date();
+      const newlyAssigned: UserPublic[] = [];
 
-      // Insert assignment (upsert or ignore duplicate)
-      await query(
-        `INSERT INTO application_interviewers (application_id, user_id, assigned_at)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (application_id, user_id) DO NOTHING`,
-        [applicationId, userId, now]
-      );
+      for (const targetUser of usersToAssign) {
+        if (!existingSet.has(targetUser.id)) {
+          // Insert assignment
+          await query(
+            `INSERT INTO application_interviewers (application_id, user_id, assigned_at)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (application_id, user_id) DO NOTHING`,
+            [applicationId, targetUser.id, now]
+          );
 
-      // Record timeline event
-      const eventId = Math.random().toString(36).substring(2, 15);
-      await query(
-        `INSERT INTO timeline_events (id, application_id, event_type, actor_id, note_content, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [
-          eventId,
-          applicationId,
-          EventType.INTERVIEWER_ASSIGNED,
-          actor.id,
-          `Assigned ${targetUser.name} (${targetUser.email}) to interview panel`,
-          now,
-        ]
-      );
+          // Record immutable timeline event
+          const eventId = Math.random().toString(36).substring(2, 15);
+          await query(
+            `INSERT INTO timeline_events (id, application_id, event_type, actor_id, note_content, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [
+              eventId,
+              applicationId,
+              EventType.INTERVIEWER_ASSIGNED,
+              actor.id,
+              `Assigned ${targetUser.name} (${targetUser.email}) to interview panel`,
+              now,
+            ]
+          );
+          newlyAssigned.push(targetUser);
+        }
+      }
 
-      const response: ApiResponse<{ applicationId: string; interviewer: UserPublic }> = {
+      const response: ApiResponse<{
+        applicationId: string;
+        interviewer: UserPublic;
+        assigned: UserPublic[];
+        newlyAssignedCount: number;
+      }> = {
         success: true,
         data: {
           applicationId,
-          interviewer: targetUser,
+          interviewer: usersToAssign[0],
+          assigned: usersToAssign,
+          newlyAssignedCount: newlyAssigned.length,
         },
-        message: 'Interviewer assigned to panel successfully',
+        message: newlyAssigned.length > 0
+          ? `Successfully assigned ${newlyAssigned.length} interviewer(s) to panel`
+          : 'Interviewer(s) are already assigned to this application',
       };
 
       res.status(200).json(response);

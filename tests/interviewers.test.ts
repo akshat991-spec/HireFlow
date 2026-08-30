@@ -391,4 +391,74 @@ describe('Interviewer Assignment & Interviewer Views (End-to-End)', () => {
       expect(res.body.error.code).toBe('FORBIDDEN');
     });
   });
+
+  describe('7. Batch Assignment & Duplicate Prevention', () => {
+    it('allows assigning multiple interviewers in a single batch request', async () => {
+      const res = await request(app)
+        .post('/api/applications/app_eng_2/interviewers')
+        .set('Authorization', `Bearer ${recruiterToken}`)
+        .send({
+          userIds: [interviewer1User.id, interviewer2User.id, interviewer3User.id],
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.newlyAssignedCount).toBe(3);
+
+      const detailRes = await request(app)
+        .get('/api/applications/app_eng_2')
+        .set('Authorization', `Bearer ${recruiterToken}`);
+
+      expect(detailRes.body.data.interviewers.length).toBe(3);
+    });
+
+    it('prevents duplicate assignments and duplicate timeline events', async () => {
+      // 1. Assign Interviewer 1
+      await request(app)
+        .post('/api/applications/app_eng_1/interviewers')
+        .set('Authorization', `Bearer ${recruiterToken}`)
+        .send({ userId: interviewer1User.id });
+
+      // 2. Assign Interviewer 1 again
+      const dupRes = await request(app)
+        .post('/api/applications/app_eng_1/interviewers')
+        .set('Authorization', `Bearer ${recruiterToken}`)
+        .send({ userId: interviewer1User.id });
+
+      expect(dupRes.status).toBe(200);
+      expect(dupRes.body.data.newlyAssignedCount).toBe(0);
+
+      // Verify panel and timeline count
+      const detailRes = await request(app)
+        .get('/api/applications/app_eng_1')
+        .set('Authorization', `Bearer ${recruiterToken}`);
+
+      const matchingInterviewers = detailRes.body.data.interviewers.filter(
+        (i: any) => i.id === interviewer1User.id
+      );
+      expect(matchingInterviewers.length).toBe(1);
+
+      const assignEvents = detailRes.body.data.timeline.filter(
+        (e: any) => e.event_type === EventType.INTERVIEWER_ASSIGNED
+      );
+      expect(assignEvents.length).toBe(1);
+    });
+  });
+
+  describe('8. Recruiter-Owned Fields Protection from Interviewers', () => {
+    it('STRICTLY FAILS when an Interviewer attempts to edit recruiter-owned application fields', async () => {
+      const res = await request(app)
+        .put('/api/applications/app_eng_1')
+        .set('Authorization', `Bearer ${interviewer1Token}`)
+        .send({
+          candidate_name: 'Hacked Candidate Name',
+          candidate_email: 'hacked@cand.test',
+          source: 'Hacked Source',
+        });
+
+      expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('FORBIDDEN');
+    });
+  });
 });
