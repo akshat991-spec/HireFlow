@@ -241,6 +241,128 @@ applicationsRouter.get(
   }
 );
 
+const applicationSchema = z.object({
+  job_opening_id: z.string().min(1, 'Job opening ID is required'),
+  candidate_name: z.string().trim().min(1, 'Candidate name is required'),
+  candidate_email: z.string().email('Invalid email address'),
+  source: z.string().trim().min(1, 'Source is required'),
+  notes: z.string().optional(),
+});
+
+const editApplicationSchema = z.object({
+  candidate_name: z.string().trim().min(1, 'Candidate name is required'),
+  candidate_email: z.string().email('Invalid email address'),
+  source: z.string().trim().min(1, 'Source is required'),
+  notes: z.string().optional(),
+});
+
+// POST /api/applications - Create a new application (Recruiter only)
+applicationsRouter.post(
+  '/',
+  authenticate,
+  requireRecruiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = req.user!;
+      const parseResult = applicationSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        throw new ValidationError(
+          parseResult.error.errors.map((e) => e.message).join(', ')
+        );
+      }
+
+      const { job_opening_id, candidate_name, candidate_email, source, notes } = parseResult.data;
+
+      const openingRes = await query(
+        'SELECT id FROM job_openings WHERE id = $1',
+        [job_opening_id]
+      );
+      if (openingRes.rows.length === 0) {
+        throw new NotFoundError(`Job opening with ID '${job_opening_id}' not found`);
+      }
+
+      const id = 'app_' + Math.random().toString(36).substring(2, 11);
+      const now = new Date();
+      const initialStage = Stage.APPLIED;
+
+      await query(
+        `INSERT INTO applications (id, job_opening_id, candidate_name, candidate_email, source, notes, current_stage, applied_date, stage_entered_at, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $8, $8)`,
+        [id, job_opening_id, candidate_name, candidate_email, source, notes || null, initialStage, now]
+      );
+
+      const eventId = 'evt_' + Math.random().toString(36).substring(2, 11);
+      await query(
+        `INSERT INTO timeline_events (id, application_id, event_type, actor_id, new_stage, note_content, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          eventId,
+          id,
+          EventType.APPLICATION_CREATED,
+          user.id,
+          initialStage,
+          `Application created by ${user.name}`,
+          now,
+        ]
+      );
+
+      const response: ApiResponse<{ id: string }> = {
+        success: true,
+        data: { id },
+        message: 'Application created successfully',
+      };
+
+      res.status(201).json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// PUT /api/applications/:id - Edit an application (Recruiter only)
+applicationsRouter.put(
+  '/:id',
+  authenticate,
+  requireRecruiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const parseResult = editApplicationSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        throw new ValidationError(
+          parseResult.error.errors.map((e) => e.message).join(', ')
+        );
+      }
+
+      const { candidate_name, candidate_email, source, notes } = parseResult.data;
+
+      const existing = await query('SELECT id FROM applications WHERE id = $1', [id]);
+      if (existing.rows.length === 0) {
+        throw new NotFoundError(`Application with ID '${id}' not found`);
+      }
+
+      const now = new Date();
+
+      await query(
+        `UPDATE applications 
+         SET candidate_name = $1, candidate_email = $2, source = $3, notes = $4, updated_at = $5
+         WHERE id = $6`,
+        [candidate_name, candidate_email, source, notes || null, now, id]
+      );
+
+      const response: ApiResponse<{ id: string }> = {
+        success: true,
+        data: { id },
+        message: 'Application updated successfully',
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 const stageChangeSchema = z.object({
   targetStage: z.nativeEnum(Stage, {
     errorMap: () => ({ message: 'Invalid target stage' }),
@@ -267,80 +389,13 @@ applicationsRouter.post(
 
       const { targetStage, note } = parseResult.data;
 
-      // Fetch current application
-      const currentRes = await query<Application>(
-        'SELECT id, current_stage, rejected_from_stage FROM applications WHERE id = $1',
-        [applicationId]
-      );
-
-      if (currentRes.rows.length === 0) {
-        throw new NotFoundError('Application not found');
-      }
-
-      const currentApp = currentRes.rows[0];
-      const currentStage = currentApp.current_stage;
-
-      // Pipeline linear order check
-      const PROGRESSION_ORDER = [
-        Stage.APPLIED,
-        Stage.SCREENING,
-        Stage.INTERVIEW,
-        Stage.OFFER,
-        Stage.HIRED,
-      ];
-
-      const currentIndex = PROGRESSION_ORDER.indexOf(currentStage);
-      const targetIndex = PROGRESSION_ORDER.indexOf(targetStage);
-
-      if (currentStage === Stage.REJECTED) {
-        throw new IllegalStageTransitionError(
-          'Cannot advance a rejected application directly. You must reinstate the candidate first.'
-        );
-      }
-
-      if (targetStage === Stage.REJECTED) {
-        throw new IllegalStageTransitionError(
-          'Use the reject endpoint to reject an application.'
-        );
-      }
-
-      if (currentIndex === -1 || targetIndex === -1 || targetIndex !== currentIndex + 1) {
-        throw new IllegalStageTransitionError(
-          `Illegal stage transition from '${currentStage}' to '${targetStage}'. Applications must progress linearly: Applied → Screening → Interview → Offer → Hired.`
-        );
-      }
-
-      const now = new Date();
-
-      // Update application
-      await query(
-        `UPDATE applications 
-         SET current_stage = $1, stage_entered_at = $2, updated_at = $2 
-         WHERE id = $3`,
-        [targetStage, now, applicationId]
-      );
-
-      // Record immutable timeline event
-      const eventId = Math.random().toString(36).substring(2, 15);
-      await query(
-        `INSERT INTO timeline_events (id, application_id, event_type, actor_id, old_stage, new_stage, note_content, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [
-          eventId,
-          applicationId,
-          EventType.STAGE_CHANGE,
-          user.id,
-          currentStage,
-          targetStage,
-          note || `Stage changed from ${currentStage} to ${targetStage}`,
-          now,
-        ]
-      );
+      const PipelineService = (await import('../services/PipelineService.js')).PipelineService;
+      const finalStage = await PipelineService.advance(user, applicationId, targetStage, note);
 
       const response: ApiResponse<{ id: string; current_stage: Stage }> = {
         success: true,
-        data: { id: applicationId, current_stage: targetStage },
-        message: `Candidate stage moved to ${targetStage}`,
+        data: { id: applicationId, current_stage: finalStage },
+        message: `Candidate stage moved to ${finalStage}`,
       };
 
       res.status(200).json(response);
@@ -361,56 +416,15 @@ applicationsRouter.post(
       const user = req.user!;
       const note = (req.body.note as string || '').trim();
 
-      const currentRes = await query<Application>(
-        'SELECT id, current_stage FROM applications WHERE id = $1',
-        [applicationId]
-      );
-
-      if (currentRes.rows.length === 0) {
-        throw new NotFoundError('Application not found');
-      }
-
-      const currentStage = currentRes.rows[0].current_stage;
-      if (currentStage === Stage.REJECTED) {
-        throw new IllegalStageTransitionError('Application is already rejected');
-      }
-
-      const now = new Date();
-
-      // Update application keeping rejected_from_stage
-      await query(
-        `UPDATE applications 
-         SET current_stage = 'REJECTED', 
-             rejected_from_stage = $1, 
-             stage_entered_at = $2, 
-             updated_at = $2 
-         WHERE id = $3`,
-        [currentStage, now, applicationId]
-      );
-
-      // Record immutable timeline event
-      const eventId = Math.random().toString(36).substring(2, 15);
-      await query(
-        `INSERT INTO timeline_events (id, application_id, event_type, actor_id, old_stage, new_stage, note_content, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [
-          eventId,
-          applicationId,
-          EventType.REJECTION,
-          user.id,
-          currentStage,
-          Stage.REJECTED,
-          note || `Application marked as rejected from ${currentStage}`,
-          now,
-        ]
-      );
+      const PipelineService = (await import('../services/PipelineService.js')).PipelineService;
+      const result = await PipelineService.reject(user, applicationId, note);
 
       const response: ApiResponse<{ id: string; current_stage: Stage; rejected_from_stage: Stage }> = {
         success: true,
         data: {
           id: applicationId,
-          current_stage: Stage.REJECTED,
-          rejected_from_stage: currentStage,
+          current_stage: result.currentStage,
+          rejected_from_stage: result.rejectedFromStage,
         },
         message: 'Application marked as rejected',
       };
@@ -433,56 +447,8 @@ applicationsRouter.post(
       const user = req.user!;
       const note = (req.body.note as string || '').trim();
 
-      const currentRes = await query<Application>(
-        'SELECT id, current_stage, rejected_from_stage FROM applications WHERE id = $1',
-        [applicationId]
-      );
-
-      if (currentRes.rows.length === 0) {
-        throw new NotFoundError('Application not found');
-      }
-
-      const app = currentRes.rows[0];
-      if (app.current_stage !== Stage.REJECTED) {
-        throw new IllegalStageTransitionError('Only rejected applications can be reinstated');
-      }
-
-      const restoreStage = app.rejected_from_stage;
-      if (!restoreStage) {
-        throw new IllegalStageTransitionError(
-          'Cannot determine prior stage to restore candidate to'
-        );
-      }
-
-      const now = new Date();
-
-      // Restore exact stage
-      await query(
-        `UPDATE applications 
-         SET current_stage = $1, 
-             rejected_from_stage = NULL, 
-             stage_entered_at = $2, 
-             updated_at = $2 
-         WHERE id = $3`,
-        [restoreStage, now, applicationId]
-      );
-
-      // Record immutable timeline event
-      const eventId = Math.random().toString(36).substring(2, 15);
-      await query(
-        `INSERT INTO timeline_events (id, application_id, event_type, actor_id, old_stage, new_stage, note_content, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [
-          eventId,
-          applicationId,
-          EventType.REINSTATEMENT,
-          user.id,
-          Stage.REJECTED,
-          restoreStage,
-          note || `Application reinstated back to ${restoreStage}`,
-          now,
-        ]
-      );
+      const PipelineService = (await import('../services/PipelineService.js')).PipelineService;
+      const restoreStage = await PipelineService.reinstate(user, applicationId, note);
 
       const response: ApiResponse<{ id: string; current_stage: Stage }> = {
         success: true,

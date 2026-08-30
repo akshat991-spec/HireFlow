@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { X, Briefcase, Users, Calendar, ArrowRight } from 'lucide-react';
 import { api } from '../../services/api.js';
-import { JobOpening, Stage, OpeningStatus } from '../../types/index.js';
+import { JobOpening, Stage, OpeningStatus, Application } from '../../types/index.js';
+import { ApplicationFormModal } from '../Applications/ApplicationFormModal.js';
 
 interface OpeningDetailModalProps {
   isOpen: boolean;
@@ -33,9 +34,11 @@ export const OpeningDetailModal: React.FC<OpeningDetailModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!isOpen || !openingId) return;
+  const [isAppModalOpen, setIsAppModalOpen] = useState(false);
+  const [editingApp, setEditingApp] = useState<Application | null>(null);
 
+  const fetchOpeningDetails = () => {
+    if (!openingId) return;
     setLoading(true);
     setError(null);
 
@@ -51,6 +54,12 @@ export const OpeningDetailModal: React.FC<OpeningDetailModalProps> = ({
       .finally(() => {
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    if (isOpen && openingId) {
+      fetchOpeningDetails();
+    }
   }, [isOpen, openingId]);
 
   if (!isOpen) return null;
@@ -175,6 +184,17 @@ export const OpeningDetailModal: React.FC<OpeningDetailModalProps> = ({
                 <h3 style={{ fontSize: '0.9rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
                   Applications in this Opening ({opening.applications?.length || 0})
                 </h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingApp(null);
+                    setIsAppModalOpen(true);
+                  }}
+                  className="btn btn-primary"
+                  style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
+                >
+                  Add Candidate
+                </button>
               </div>
 
               {(!opening.applications || opening.applications.length === 0) ? (
@@ -232,6 +252,17 @@ export const OpeningDetailModal: React.FC<OpeningDetailModalProps> = ({
                               <span style={{ fontSize: '0.7rem', opacity: 0.8 }}> (from {app.rejected_from_stage})</span>
                             )}
                           </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingApp(app);
+                              setIsAppModalOpen(true);
+                            }}
+                            className="btn btn-secondary"
+                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                          >
+                            Edit
+                          </button>
                         </div>
                       </div>
                     );
@@ -280,6 +311,14 @@ export const OpeningDetailModal: React.FC<OpeningDetailModalProps> = ({
           </div>
         ) : null}
       </div>
+
+      <ApplicationFormModal
+        isOpen={isAppModalOpen}
+        onClose={() => setIsAppModalOpen(false)}
+        onSuccess={() => fetchOpeningDetails()}
+        jobOpeningId={opening?.id}
+        initialData={editingApp}
+      />
     </div>
   );
 };
