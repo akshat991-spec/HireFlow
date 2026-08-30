@@ -127,6 +127,40 @@ applicationsRouter.get(
       const dataValues = [...values, pageSize, offset];
       const dataRes = await query<Application>(dataSql, dataValues);
 
+      if (dataRes.rows.length > 0) {
+        const appIds = dataRes.rows.map((a) => a.id);
+        const placeholders = appIds.map((_, i) => `$${i + 1}`).join(',');
+        const interviewersRes = await query<{
+          application_id: string;
+          id: string;
+          name: string;
+          email: string;
+          role: Role;
+        }>(
+          `SELECT ai.application_id, u.id, u.name, u.email, u.role
+           FROM application_interviewers ai
+           JOIN users u ON ai.user_id = u.id
+           WHERE ai.application_id IN (${placeholders})
+           ORDER BY u.name ASC`,
+          appIds
+        );
+
+        const map: Record<string, UserPublic[]> = {};
+        for (const row of interviewersRes.rows) {
+          if (!map[row.application_id]) map[row.application_id] = [];
+          map[row.application_id].push({
+            id: row.id,
+            name: row.name,
+            email: row.email,
+            role: row.role,
+          });
+        }
+
+        for (const appItem of dataRes.rows) {
+          appItem.interviewers = map[appItem.id] || [];
+        }
+      }
+
       const response: ApiResponse<{
         items: Application[];
         total: number;

@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { X, Briefcase, Users, Calendar, ArrowRight } from 'lucide-react';
 import { api } from '../../services/api.js';
-import { JobOpening, Stage, OpeningStatus, Application } from '../../types/index.js';
+import { JobOpening, Stage, OpeningStatus, Application, Role } from '../../types/index.js';
 import { ApplicationFormModal } from '../Applications/ApplicationFormModal.js';
+import { ApplicationDetailModal } from '../Applications/ApplicationDetailModal.js';
+import { useAuth } from '../../context/AuthContext.js';
 
 interface OpeningDetailModalProps {
   isOpen: boolean;
@@ -30,12 +32,16 @@ export const OpeningDetailModal: React.FC<OpeningDetailModalProps> = ({
   onArchive,
   onRestore,
 }) => {
+  const { currentUser } = useAuth();
   const [opening, setOpening] = useState<JobOpening | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [isAppModalOpen, setIsAppModalOpen] = useState(false);
   const [editingApp, setEditingApp] = useState<Application | null>(null);
+
+  const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   const fetchOpeningDetails = () => {
     if (!openingId) return;
@@ -255,14 +261,29 @@ export const OpeningDetailModal: React.FC<OpeningDetailModalProps> = ({
                           <button
                             type="button"
                             onClick={() => {
-                              setEditingApp(app);
-                              setIsAppModalOpen(true);
+                              setSelectedAppId(app.id);
+                              setIsDetailModalOpen(true);
                             }}
                             className="btn btn-secondary"
                             style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                            title="View candidate details & interview panel"
                           >
-                            Edit
+                            <Eye size={14} />
+                            <span>View</span>
                           </button>
+                          {currentUser?.role === Role.RECRUITER && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingApp(app);
+                                setIsAppModalOpen(true);
+                              }}
+                              className="btn btn-secondary"
+                              style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                            >
+                              Edit
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
@@ -272,41 +293,45 @@ export const OpeningDetailModal: React.FC<OpeningDetailModalProps> = ({
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-              {opening.status === OpeningStatus.OPEN ? (
+              {currentUser?.role === Role.RECRUITER && (
+                opening.status === OpeningStatus.OPEN ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onArchive(opening);
+                    }}
+                    className="btn btn-secondary"
+                    style={{ color: 'var(--warning)' }}
+                  >
+                    Archive Opening
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onRestore(opening);
+                    }}
+                    className="btn btn-secondary"
+                    style={{ color: 'var(--success)' }}
+                  >
+                    Restore Opening
+                  </button>
+                )
+              )}
+              {currentUser?.role === Role.RECRUITER && (
                 <button
                   type="button"
                   onClick={() => {
                     onClose();
-                    onArchive(opening);
+                    onEdit(opening);
                   }}
-                  className="btn btn-secondary"
-                  style={{ color: 'var(--warning)' }}
+                  className="btn btn-primary"
                 >
-                  Archive Opening
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    onRestore(opening);
-                  }}
-                  className="btn btn-secondary"
-                  style={{ color: 'var(--success)' }}
-                >
-                  Restore Opening
+                  Edit Position
                 </button>
               )}
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onEdit(opening);
-                }}
-                className="btn btn-primary"
-              >
-                Edit Position
-              </button>
             </div>
           </div>
         ) : null}
@@ -318,6 +343,14 @@ export const OpeningDetailModal: React.FC<OpeningDetailModalProps> = ({
         onSuccess={() => fetchOpeningDetails()}
         jobOpeningId={opening?.id}
         initialData={editingApp}
+      />
+
+      <ApplicationDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        applicationId={selectedAppId}
+        currentUser={currentUser}
+        onApplicationUpdated={() => fetchOpeningDetails()}
       />
     </div>
   );

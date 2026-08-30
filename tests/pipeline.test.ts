@@ -158,6 +158,15 @@ describe('Application Pipeline State Machine', () => {
       expect(res.body.data.rejected_from_stage).toBe(Stage.APPLIED);
     });
 
+    it('allows rejection from SCREENING stage', async () => {
+      const res = await request(app)
+        .post('/api/applications/app_screening/reject')
+        .set('Authorization', `Bearer ${recruiterToken}`);
+      expect(res.status).toBe(200);
+      expect(res.body.data.current_stage).toBe(Stage.REJECTED);
+      expect(res.body.data.rejected_from_stage).toBe(Stage.SCREENING);
+    });
+
     it('allows rejection from INTERVIEW stage', async () => {
       const res = await request(app)
         .post('/api/applications/app_interview/reject')
@@ -165,6 +174,24 @@ describe('Application Pipeline State Machine', () => {
       expect(res.status).toBe(200);
       expect(res.body.data.current_stage).toBe(Stage.REJECTED);
       expect(res.body.data.rejected_from_stage).toBe(Stage.INTERVIEW);
+    });
+
+    it('allows rejection from OFFER stage', async () => {
+      const res = await request(app)
+        .post('/api/applications/app_offer/reject')
+        .set('Authorization', `Bearer ${recruiterToken}`);
+      expect(res.status).toBe(200);
+      expect(res.body.data.current_stage).toBe(Stage.REJECTED);
+      expect(res.body.data.rejected_from_stage).toBe(Stage.OFFER);
+    });
+
+    it('allows rejection from HIRED stage', async () => {
+      const res = await request(app)
+        .post('/api/applications/app_hired/reject')
+        .set('Authorization', `Bearer ${recruiterToken}`);
+      expect(res.status).toBe(200);
+      expect(res.body.data.current_stage).toBe(Stage.REJECTED);
+      expect(res.body.data.rejected_from_stage).toBe(Stage.HIRED);
     });
 
     it('prevents rejecting an already rejected application', async () => {
@@ -222,6 +249,44 @@ describe('Application Pipeline State Machine', () => {
         .post('/api/applications/app_rejected/reinstate')
         .set('Authorization', `Bearer ${interviewerToken}`);
       expect(res.status).toBe(403);
+    });
+  });
+
+  describe('Immutable Timeline Events Creation', () => {
+    it('creates timeline events for stage transition, rejection, and reinstatement', async () => {
+      // 1. Advance stage
+      await request(app)
+        .post('/api/applications/app_applied/stage')
+        .set('Authorization', `Bearer ${recruiterToken}`)
+        .send({ targetStage: Stage.SCREENING, note: 'Moved to screening' });
+
+      // 2. Reject
+      await request(app)
+        .post('/api/applications/app_applied/reject')
+        .set('Authorization', `Bearer ${recruiterToken}`)
+        .send({ note: 'Candidate withdrew' });
+
+      // 3. Reinstate
+      await request(app)
+        .post('/api/applications/app_applied/reinstate')
+        .set('Authorization', `Bearer ${recruiterToken}`)
+        .send({ note: 'Reconsidered candidate' });
+
+      // Verify application details and timeline events
+      const res = await request(app)
+        .get('/api/applications/app_applied')
+        .set('Authorization', `Bearer ${recruiterToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.application.current_stage).toBe(Stage.SCREENING);
+      
+      const timeline = res.body.data.timeline;
+      expect(timeline.length).toBeGreaterThanOrEqual(3);
+
+      const eventTypes = timeline.map((e: any) => e.event_type);
+      expect(eventTypes).toContain('STAGE_CHANGE');
+      expect(eventTypes).toContain('REJECTION');
+      expect(eventTypes).toContain('REINSTATEMENT');
     });
   });
 });
