@@ -442,6 +442,75 @@ applicationsRouter.put(
   }
 );
 
+const bulkActionSchema = z.object({
+  applicationIds: z.array(z.string().min(1)).min(1, 'At least one application must be selected'),
+  note: z.string().optional(),
+});
+
+// POST /api/applications/bulk/advance - Bulk advance applications to their next linear stages (Recruiter only)
+applicationsRouter.post(
+  '/bulk/advance',
+  authenticate,
+  requireRecruiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = req.user!;
+      const parseResult = bulkActionSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        throw new ValidationError(
+          parseResult.error.errors.map((e) => e.message).join(', ')
+        );
+      }
+
+      const { applicationIds, note } = parseResult.data;
+      const PipelineService = (await import('../services/PipelineService.js')).PipelineService;
+      const summary = await PipelineService.bulkAdvance(user, applicationIds, note);
+
+      const response: ApiResponse<typeof summary> = {
+        success: true,
+        data: summary,
+        message: `Processed bulk advance for ${summary.total} application(s): ${summary.successful} succeeded, ${summary.refused} refused`,
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// POST /api/applications/bulk/reject - Bulk reject applications (Recruiter only)
+applicationsRouter.post(
+  '/bulk/reject',
+  authenticate,
+  requireRecruiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = req.user!;
+      const parseResult = bulkActionSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        throw new ValidationError(
+          parseResult.error.errors.map((e) => e.message).join(', ')
+        );
+      }
+
+      const { applicationIds, note } = parseResult.data;
+      const PipelineService = (await import('../services/PipelineService.js')).PipelineService;
+      const summary = await PipelineService.bulkReject(user, applicationIds, note);
+
+      const response: ApiResponse<typeof summary> = {
+        success: true,
+        data: summary,
+        message: `Processed bulk reject for ${summary.total} application(s): ${summary.successful} succeeded, ${summary.refused} refused`,
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 const stageChangeSchema = z.object({
   targetStage: z.nativeEnum(Stage, {
     errorMap: () => ({ message: 'Invalid target stage' }),

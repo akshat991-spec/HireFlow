@@ -195,4 +195,247 @@ export class PipelineService {
 
     return restoreStage;
   }
+
+  static async bulkAdvance(
+    user: UserPublic,
+    applicationIds: string[],
+    note?: string
+  ): Promise<{
+    total: number;
+    successful: number;
+    refused: number;
+    results: Array<{
+      applicationId: string;
+      candidateName: string;
+      candidateEmail?: string;
+      success: boolean;
+      status: 'SUCCESS' | 'REFUSED';
+      oldStage?: Stage;
+      targetStage?: Stage;
+      reason?: string;
+      message?: string;
+    }>;
+  }> {
+    PipelineStateMachine.validateRole(user.role);
+
+    const results: Array<{
+      applicationId: string;
+      candidateName: string;
+      candidateEmail?: string;
+      success: boolean;
+      status: 'SUCCESS' | 'REFUSED';
+      oldStage?: Stage;
+      targetStage?: Stage;
+      reason?: string;
+      message?: string;
+    }> = [];
+
+    let successfulCount = 0;
+    let refusedCount = 0;
+
+    for (const id of applicationIds) {
+      try {
+        const appRes = await query<Application>(
+          'SELECT id, candidate_name, candidate_email, current_stage, rejected_from_stage FROM applications WHERE id = $1',
+          [id]
+        );
+
+        if (appRes.rows.length === 0) {
+          results.push({
+            applicationId: id,
+            candidateName: 'Unknown',
+            success: false,
+            status: 'REFUSED',
+            reason: `Application with ID '${id}' not found`,
+          });
+          refusedCount++;
+          continue;
+        }
+
+        const app = appRes.rows[0];
+
+        if (app.current_stage === Stage.REJECTED) {
+          results.push({
+            applicationId: id,
+            candidateName: app.candidate_name,
+            candidateEmail: app.candidate_email,
+            success: false,
+            status: 'REFUSED',
+            oldStage: Stage.REJECTED,
+            reason: 'Candidate is Rejected. Must be reinstated before advancing.',
+          });
+          refusedCount++;
+          continue;
+        }
+
+        if (app.current_stage === Stage.HIRED) {
+          results.push({
+            applicationId: id,
+            candidateName: app.candidate_name,
+            candidateEmail: app.candidate_email,
+            success: false,
+            status: 'REFUSED',
+            oldStage: Stage.HIRED,
+            reason: 'Candidate is already in the final stage (HIRED).',
+          });
+          refusedCount++;
+          continue;
+        }
+
+        const currentIndex = PROGRESSION_ORDER.indexOf(app.current_stage);
+        if (currentIndex === -1 || currentIndex >= PROGRESSION_ORDER.length - 1) {
+          results.push({
+            applicationId: id,
+            candidateName: app.candidate_name,
+            candidateEmail: app.candidate_email,
+            success: false,
+            status: 'REFUSED',
+            oldStage: app.current_stage,
+            reason: `Cannot advance from stage '${app.current_stage}'`,
+          });
+          refusedCount++;
+          continue;
+        }
+
+        const nextStage = PROGRESSION_ORDER[currentIndex + 1];
+
+        // Execute stage advance
+        const targetStage = await this.advance(user, id, nextStage, note);
+
+        results.push({
+          applicationId: id,
+          candidateName: app.candidate_name,
+          candidateEmail: app.candidate_email,
+          success: true,
+          status: 'SUCCESS',
+          oldStage: app.current_stage,
+          targetStage,
+          message: `Advanced to ${targetStage}`,
+        });
+        successfulCount++;
+      } catch (err: any) {
+        results.push({
+          applicationId: id,
+          candidateName: 'Candidate',
+          success: false,
+          status: 'REFUSED',
+          reason: err.message || 'Transition failed',
+        });
+        refusedCount++;
+      }
+    }
+
+    return {
+      total: applicationIds.length,
+      successful: successfulCount,
+      refused: refusedCount,
+      results,
+    };
+  }
+
+  static async bulkReject(
+    user: UserPublic,
+    applicationIds: string[],
+    note?: string
+  ): Promise<{
+    total: number;
+    successful: number;
+    refused: number;
+    results: Array<{
+      applicationId: string;
+      candidateName: string;
+      candidateEmail?: string;
+      success: boolean;
+      status: 'SUCCESS' | 'REFUSED';
+      oldStage?: Stage;
+      targetStage?: Stage;
+      reason?: string;
+      message?: string;
+    }>;
+  }> {
+    PipelineStateMachine.validateRole(user.role);
+
+    const results: Array<{
+      applicationId: string;
+      candidateName: string;
+      candidateEmail?: string;
+      success: boolean;
+      status: 'SUCCESS' | 'REFUSED';
+      oldStage?: Stage;
+      targetStage?: Stage;
+      reason?: string;
+      message?: string;
+    }> = [];
+
+    let successfulCount = 0;
+    let refusedCount = 0;
+
+    for (const id of applicationIds) {
+      try {
+        const appRes = await query<Application>(
+          'SELECT id, candidate_name, candidate_email, current_stage FROM applications WHERE id = $1',
+          [id]
+        );
+
+        if (appRes.rows.length === 0) {
+          results.push({
+            applicationId: id,
+            candidateName: 'Unknown',
+            success: false,
+            status: 'REFUSED',
+            reason: `Application with ID '${id}' not found`,
+          });
+          refusedCount++;
+          continue;
+        }
+
+        const app = appRes.rows[0];
+
+        if (app.current_stage === Stage.REJECTED) {
+          results.push({
+            applicationId: id,
+            candidateName: app.candidate_name,
+            candidateEmail: app.candidate_email,
+            success: false,
+            status: 'REFUSED',
+            oldStage: Stage.REJECTED,
+            reason: 'Application is already rejected',
+          });
+          refusedCount++;
+          continue;
+        }
+
+        const oldStage = app.current_stage;
+        await this.reject(user, id, note);
+
+        results.push({
+          applicationId: id,
+          candidateName: app.candidate_name,
+          candidateEmail: app.candidate_email,
+          success: true,
+          status: 'SUCCESS',
+          oldStage,
+          targetStage: Stage.REJECTED,
+          message: 'Candidate rejected',
+        });
+        successfulCount++;
+      } catch (err: any) {
+        results.push({
+          applicationId: id,
+          candidateName: 'Candidate',
+          success: false,
+          status: 'REFUSED',
+          reason: err.message || 'Rejection failed',
+        });
+        refusedCount++;
+      }
+    }
+
+    return {
+      total: applicationIds.length,
+      successful: successfulCount,
+      refused: refusedCount,
+      results,
+    };
+  }
 }

@@ -18,12 +18,21 @@ import {
   ChevronLeft,
   ChevronRight,
   RotateCcw,
+  FastForward,
+  UserX,
+  CheckSquare,
+  Square,
+  MinusSquare,
 } from 'lucide-react';
 import { api } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.js';
 import { Application, JobOpening, Stage, Role } from '../types/index.js';
 import { ApplicationDetailModal } from '../components/Applications/ApplicationDetailModal.js';
 import { ApplicationFormModal } from '../components/Applications/ApplicationFormModal.js';
+import {
+  BulkActionResultsModal,
+  BulkActionSummaryData,
+} from '../components/Applications/BulkActionResultsModal.js';
 
 const STAGE_COLORS: Record<Stage, { bg: string; text: string; border: string }> = {
   [Stage.APPLIED]: { bg: 'rgba(59, 130, 246, 0.15)', text: '#93c5fd', border: 'rgba(59, 130, 246, 0.3)' },
@@ -57,6 +66,11 @@ export const CandidatesPage: React.FC = () => {
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Bulk Selection State
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  const [bulkSummaryData, setBulkSummaryData] = useState<BulkActionSummaryData | null>(null);
 
   // Modals
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
@@ -119,6 +133,7 @@ export const CandidatesPage: React.FC = () => {
 
   useEffect(() => {
     fetchApplications();
+    setSelectedIds([]); // Clear selection when filters or pagination changes
   }, [search, stageFilter, openingFilter, sourceFilter, sortBy, sortOrder, page, pageSize, currentUser]);
 
   const handleResetFilters = () => {
@@ -129,6 +144,78 @@ export const CandidatesPage: React.FC = () => {
     setSortBy('applied_date');
     setSortOrder('desc');
     setPage(1);
+    setSelectedIds([]);
+  };
+
+  // Selection handlers
+  const handleToggleSelectAll = () => {
+    if (selectedIds.length === applications.length && applications.length > 0) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(applications.map((a) => a.id));
+    }
+  };
+
+  const handleToggleSelectOne = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  // Bulk advance handler
+  const handleBulkAdvance = async () => {
+    if (selectedIds.length === 0 || isBulkProcessing) return;
+    setIsBulkProcessing(true);
+    try {
+      const res = await api.post<any>('/api/applications/bulk/advance', {
+        applicationIds: selectedIds,
+        note: 'Bulk stage advance performed by recruiter',
+      });
+
+      if (res.success) {
+        setBulkSummaryData({
+          actionType: 'ADVANCE',
+          total: res.data.total,
+          successful: res.data.successful,
+          refused: res.data.refused,
+          results: res.data.results,
+        });
+        setSelectedIds([]);
+        fetchApplications();
+      }
+    } catch (err: any) {
+      setError(err.message || 'Bulk advance failed');
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
+
+  // Bulk reject handler
+  const handleBulkReject = async () => {
+    if (selectedIds.length === 0 || isBulkProcessing) return;
+    setIsBulkProcessing(true);
+    try {
+      const res = await api.post<any>('/api/applications/bulk/reject', {
+        applicationIds: selectedIds,
+        note: 'Bulk rejection performed by recruiter',
+      });
+
+      if (res.success) {
+        setBulkSummaryData({
+          actionType: 'REJECT',
+          total: res.data.total,
+          successful: res.data.successful,
+          refused: res.data.refused,
+          results: res.data.results,
+        });
+        setSelectedIds([]);
+        fetchApplications();
+      }
+    } catch (err: any) {
+      setError(err.message || 'Bulk reject failed');
+    } finally {
+      setIsBulkProcessing(false);
+    }
   };
 
   const handleOpenDetail = (appId: string) => {
@@ -150,9 +237,11 @@ export const CandidatesPage: React.FC = () => {
 
   const startRecord = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
   const endRecord = Math.min(page * pageSize, totalCount);
+  const isAllSelected = applications.length > 0 && selectedIds.length === applications.length;
+  const isSomeSelected = selectedIds.length > 0 && selectedIds.length < applications.length;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'relative' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
@@ -162,7 +251,7 @@ export const CandidatesPage: React.FC = () => {
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
             {isInterviewer
               ? `Showing candidates assigned to you (${currentUser?.name}) across all hiring pipelines.`
-              : 'Search, filter, sort, and manage candidate applications across all accessible job openings.'}
+              : 'Search, filter, sort, advance, and manage candidate applications across all accessible job openings.'}
           </p>
         </div>
 
@@ -196,6 +285,80 @@ export const CandidatesPage: React.FC = () => {
           <ShieldCheck size={20} />
           <div>
             <strong>Interviewer Access Active:</strong> Your view is server-side scoped to candidates where you are assigned to the interview panel.
+          </div>
+        </div>
+      )}
+
+      {/* Floating Selection Action Bar for Recruiters */}
+      {isRecruiter && selectedIds.length > 0 && (
+        <div
+          style={{
+            backgroundColor: 'var(--bg-card)',
+            border: '1px solid var(--primary)',
+            borderRadius: 'var(--radius-md)',
+            padding: '0.75rem 1.25rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '1rem',
+            boxShadow: '0 10px 15px -3px rgba(79, 70, 229, 0.2)',
+            animation: 'fadeIn 200ms ease',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <span
+              style={{
+                backgroundColor: 'var(--primary)',
+                color: 'white',
+                padding: '0.2rem 0.6rem',
+                borderRadius: 'var(--radius-full)',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+              }}
+            >
+              {selectedIds.length}
+            </span>
+            <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+              Candidate{selectedIds.length > 1 ? 's' : ''} Selected
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <button
+              onClick={handleBulkAdvance}
+              disabled={isBulkProcessing}
+              className="btn btn-primary"
+              style={{ padding: '0.4rem 0.85rem', fontSize: '0.85rem', gap: '0.4rem' }}
+              title="Advance each selected candidate to their next valid stage"
+            >
+              <FastForward size={15} />
+              <span>Bulk Advance</span>
+            </button>
+
+            <button
+              onClick={handleBulkReject}
+              disabled={isBulkProcessing}
+              className="btn btn-secondary"
+              style={{
+                padding: '0.4rem 0.85rem',
+                fontSize: '0.85rem',
+                gap: '0.4rem',
+                color: 'var(--danger)',
+                borderColor: 'rgba(239, 68, 68, 0.4)',
+              }}
+              title="Reject selected candidates"
+            >
+              <UserX size={15} />
+              <span>Bulk Reject</span>
+            </button>
+
+            <button
+              onClick={() => setSelectedIds([])}
+              className="btn btn-secondary"
+              style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
+            >
+              Deselect
+            </button>
           </div>
         </div>
       )}
@@ -481,6 +644,20 @@ export const CandidatesPage: React.FC = () => {
                     letterSpacing: '0.05em',
                   }}
                 >
+                  {isRecruiter && (
+                    <th style={{ padding: '0.85rem 0.75rem 0.85rem 1.25rem', width: '40px' }}>
+                      <input
+                        type="checkbox"
+                        checked={isAllSelected}
+                        ref={(input) => {
+                          if (input) input.indeterminate = isSomeSelected;
+                        }}
+                        onChange={handleToggleSelectAll}
+                        style={{ cursor: 'pointer', transform: 'scale(1.1)' }}
+                        title="Select/Deselect All on Current Page"
+                      />
+                    </th>
+                  )}
                   <th style={{ padding: '0.85rem 1.25rem' }}>Candidate</th>
                   <th style={{ padding: '0.85rem 1.25rem' }}>Job Opening</th>
                   <th style={{ padding: '0.85rem 1.25rem' }}>Current Stage</th>
@@ -494,16 +671,30 @@ export const CandidatesPage: React.FC = () => {
                 {applications.map((app) => {
                   const style = STAGE_COLORS[app.current_stage] || STAGE_COLORS[Stage.APPLIED];
                   const panel = app.interviewers || [];
+                  const isSelected = selectedIds.includes(app.id);
 
                   return (
                     <tr
                       key={app.id}
                       style={{
                         borderBottom: '1px solid var(--border-color)',
+                        backgroundColor: isSelected ? 'rgba(79, 70, 229, 0.08)' : undefined,
                         transition: 'background 150ms ease',
                       }}
                       className="table-row-hover"
                     >
+                      {/* Checkbox for Recruiter */}
+                      {isRecruiter && (
+                        <td style={{ padding: '1rem 0.75rem 1rem 1.25rem' }}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelectOne(app.id)}
+                            style={{ cursor: 'pointer', transform: 'scale(1.1)' }}
+                          />
+                        </td>
+                      )}
+
                       {/* Candidate Name & Email */}
                       <td style={{ padding: '1rem 1.25rem' }}>
                         <div
@@ -695,6 +886,13 @@ export const CandidatesPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Bulk Action Results Modal */}
+      <BulkActionResultsModal
+        isOpen={Boolean(bulkSummaryData)}
+        onClose={() => setBulkSummaryData(null)}
+        data={bulkSummaryData}
+      />
 
       {/* Modals */}
       <ApplicationDetailModal
