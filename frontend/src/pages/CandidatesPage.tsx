@@ -12,6 +12,12 @@ import {
   AlertCircle,
   ShieldCheck,
   Tag,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
 } from 'lucide-react';
 import { api } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.js';
@@ -28,16 +34,26 @@ const STAGE_COLORS: Record<Stage, { bg: string; text: string; border: string }> 
   [Stage.REJECTED]: { bg: 'rgba(239, 68, 68, 0.15)', text: '#fca5a5', border: 'rgba(239, 68, 68, 0.3)' },
 };
 
+const COMMON_SOURCES = ['LinkedIn', 'Referral', 'Direct', 'Career Portal', 'Agency', 'GitHub', 'Inbound'];
+
 export const CandidatesPage: React.FC = () => {
   const { currentUser } = useAuth();
   const [applications, setApplications] = useState<Application[]>([]);
   const [openings, setOpenings] = useState<JobOpening[]>([]);
   const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
-  // Filters
+  // Search & Filter State
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState('');
   const [openingFilter, setOpeningFilter] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('');
+
+  // Sorting & Pagination State
+  const [sortBy, setSortBy] = useState('applied_date');
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,16 +76,24 @@ export const CandidatesPage: React.FC = () => {
       if (search.trim()) queryParams.set('search', search.trim());
       if (stageFilter) queryParams.set('stage', stageFilter);
       if (openingFilter) queryParams.set('jobOpeningId', openingFilter);
-      queryParams.set('pageSize', '50');
+      if (sourceFilter) queryParams.set('source', sourceFilter);
+      queryParams.set('sortBy', sortBy);
+      queryParams.set('sortOrder', sortOrder);
+      queryParams.set('page', page.toString());
+      queryParams.set('pageSize', pageSize.toString());
 
       const res = await api.get<{
         items: Application[];
         total: number;
+        page: number;
+        pageSize: number;
+        totalPages: number;
       }>(`/api/applications?${queryParams.toString()}`);
 
       if (res.success) {
         setApplications(res.data.items);
         setTotalCount(res.data.total);
+        setTotalPages(res.data.totalPages);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load candidates');
@@ -95,7 +119,17 @@ export const CandidatesPage: React.FC = () => {
 
   useEffect(() => {
     fetchApplications();
-  }, [search, stageFilter, openingFilter, currentUser]);
+  }, [search, stageFilter, openingFilter, sourceFilter, sortBy, sortOrder, page, pageSize, currentUser]);
+
+  const handleResetFilters = () => {
+    setSearch('');
+    setStageFilter('');
+    setOpeningFilter('');
+    setSourceFilter('');
+    setSortBy('applied_date');
+    setSortOrder('desc');
+    setPage(1);
+  };
 
   const handleOpenDetail = (appId: string) => {
     setSelectedAppId(appId);
@@ -112,18 +146,23 @@ export const CandidatesPage: React.FC = () => {
     setIsFormModalOpen(true);
   };
 
+  const hasActiveFilters = Boolean(search || stageFilter || openingFilter || sourceFilter || sortBy !== 'applied_date' || sortOrder !== 'desc');
+
+  const startRecord = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
+  const endRecord = Math.min(page * pageSize, totalCount);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.25rem' }}>
-            {isInterviewer ? 'My Assigned Candidates' : 'Candidates & Pipeline'}
+            {isInterviewer ? 'My Applications' : 'Candidates & Pipeline'}
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
             {isInterviewer
               ? `Showing candidates assigned to you (${currentUser?.name}) across all hiring pipelines.`
-              : 'Manage candidate applications, interview panel assignments, and pipeline stages.'}
+              : 'Search, filter, sort, and manage candidate applications across all accessible job openings.'}
           </p>
         </div>
 
@@ -161,98 +200,186 @@ export const CandidatesPage: React.FC = () => {
         </div>
       )}
 
-      {/* Filter and Search Bar */}
+      {/* Multi-Criteria Search & Filter Controls */}
       <div
         style={{
           display: 'flex',
+          flexDirection: 'column',
           gap: '0.75rem',
-          flexWrap: 'wrap',
-          alignItems: 'center',
           backgroundColor: 'var(--bg-card)',
-          padding: '0.75rem 1rem',
+          padding: '1rem',
           borderRadius: 'var(--radius-md)',
           border: '1px solid var(--border-color)',
         }}
       >
-        {/* Search */}
-        <div style={{ position: 'relative', flex: 1, minWidth: '220px' }}>
-          <Search
-            size={16}
-            style={{
-              position: 'absolute',
-              left: '10px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: 'var(--text-muted)',
-            }}
-          />
-          <input
-            type="text"
-            placeholder="Search candidate name or email..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '0.5rem 0.75rem 0.5rem 2.2rem',
-              backgroundColor: 'var(--bg-main)',
-              border: '1px solid var(--border-color)',
-              borderRadius: 'var(--radius-sm)',
-              color: 'var(--text-primary)',
-              fontSize: '0.875rem',
-              outline: 'none',
-            }}
-          />
+        {/* Top Row: Search + Filters */}
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Search Input */}
+          <div style={{ position: 'relative', flex: 2, minWidth: '240px' }}>
+            <Search
+              size={16}
+              style={{
+                position: 'absolute',
+                left: '10px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: 'var(--text-muted)',
+              }}
+            />
+            <input
+              type="text"
+              placeholder="Search candidate name or email..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              style={{
+                width: '100%',
+                padding: '0.5rem 0.75rem 0.5rem 2.2rem',
+                backgroundColor: 'var(--bg-main)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-sm)',
+                color: 'var(--text-primary)',
+                fontSize: '0.875rem',
+                outline: 'none',
+              }}
+            />
+          </div>
+
+          {/* Stage Filter */}
+          <div style={{ flex: 1, minWidth: '140px' }}>
+            <select
+              value={stageFilter}
+              onChange={(e) => {
+                setStageFilter(e.target.value);
+                setPage(1);
+              }}
+              style={{
+                width: '100%',
+                padding: '0.5rem 0.75rem',
+                backgroundColor: 'var(--bg-main)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-sm)',
+                color: 'var(--text-primary)',
+                fontSize: '0.875rem',
+                outline: 'none',
+              }}
+            >
+              <option value="">All Stages</option>
+              <option value={Stage.APPLIED}>Applied</option>
+              <option value={Stage.SCREENING}>Screening</option>
+              <option value={Stage.INTERVIEW}>Interview</option>
+              <option value={Stage.OFFER}>Offer</option>
+              <option value={Stage.HIRED}>Hired</option>
+              <option value={Stage.REJECTED}>Rejected</option>
+            </select>
+          </div>
+
+          {/* Job Opening Filter */}
+          <div style={{ flex: 1.5, minWidth: '180px' }}>
+            <select
+              value={openingFilter}
+              onChange={(e) => {
+                setOpeningFilter(e.target.value);
+                setPage(1);
+              }}
+              style={{
+                width: '100%',
+                padding: '0.5rem 0.75rem',
+                backgroundColor: 'var(--bg-main)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-sm)',
+                color: 'var(--text-primary)',
+                fontSize: '0.875rem',
+                outline: 'none',
+              }}
+            >
+              <option value="">All Job Openings</option>
+              {openings.map((op) => (
+                <option key={op.id} value={op.id}>
+                  {op.title} ({op.department})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Source Filter */}
+          <div style={{ flex: 1, minWidth: '140px' }}>
+            <select
+              value={sourceFilter}
+              onChange={(e) => {
+                setSourceFilter(e.target.value);
+                setPage(1);
+              }}
+              style={{
+                width: '100%',
+                padding: '0.5rem 0.75rem',
+                backgroundColor: 'var(--bg-main)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-sm)',
+                color: 'var(--text-primary)',
+                fontSize: '0.875rem',
+                outline: 'none',
+              }}
+            >
+              <option value="">All Sources</option>
+              {COMMON_SOURCES.map((src) => (
+                <option key={src} value={src}>
+                  {src}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        {/* Stage Filter */}
-        <div style={{ minWidth: '150px' }}>
-          <select
-            value={stageFilter}
-            onChange={(e) => setStageFilter(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '0.5rem 0.75rem',
-              backgroundColor: 'var(--bg-main)',
-              border: '1px solid var(--border-color)',
-              borderRadius: 'var(--radius-sm)',
-              color: 'var(--text-primary)',
-              fontSize: '0.875rem',
-              outline: 'none',
-            }}
-          >
-            <option value="">All Stages</option>
-            <option value={Stage.APPLIED}>Applied</option>
-            <option value={Stage.SCREENING}>Screening</option>
-            <option value={Stage.INTERVIEW}>Interview</option>
-            <option value={Stage.OFFER}>Offer</option>
-            <option value={Stage.HIRED}>Hired</option>
-            <option value={Stage.REJECTED}>Rejected</option>
-          </select>
-        </div>
+        {/* Bottom Row: Sorting + Reset */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-color)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>Sort by:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => {
+                setSortBy(e.target.value);
+                setPage(1);
+              }}
+              style={{
+                padding: '0.35rem 0.65rem',
+                backgroundColor: 'var(--bg-main)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-sm)',
+                color: 'var(--text-primary)',
+                fontSize: '0.825rem',
+                outline: 'none',
+              }}
+            >
+              <option value="applied_date">Applied Date</option>
+              <option value="current_stage">Stage</option>
+              <option value="updated_at">Last Updated</option>
+              <option value="candidate_name">Candidate Name</option>
+            </select>
 
-        {/* Opening Filter */}
-        <div style={{ minWidth: '180px' }}>
-          <select
-            value={openingFilter}
-            onChange={(e) => setOpeningFilter(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '0.5rem 0.75rem',
-              backgroundColor: 'var(--bg-main)',
-              border: '1px solid var(--border-color)',
-              borderRadius: 'var(--radius-sm)',
-              color: 'var(--text-primary)',
-              fontSize: '0.875rem',
-              outline: 'none',
-            }}
-          >
-            <option value="">All Job Openings</option>
-            {openings.map((op) => (
-              <option key={op.id} value={op.id}>
-                {op.title} ({op.department})
-              </option>
-            ))}
-          </select>
+            <button
+              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              className="btn btn-secondary"
+              style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem' }}
+              title={`Toggle sort order (Currently ${sortOrder.toUpperCase()})`}
+            >
+              {sortOrder === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+              <span>{sortOrder.toUpperCase()}</span>
+            </button>
+          </div>
+
+          {hasActiveFilters && (
+            <button
+              onClick={handleResetFilters}
+              className="btn btn-secondary"
+              style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem' }}
+            >
+              <RotateCcw size={13} />
+              <span>Reset Filters</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -285,10 +412,10 @@ export const CandidatesPage: React.FC = () => {
       {/* Loading Skeleton */}
       {loading ? (
         <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-          Loading candidates...
+          Loading applications...
         </div>
       ) : applications.length === 0 ? (
-        /* Empty State */
+        /* Zero Results Empty State */
         <div
           className="card"
           style={{
@@ -316,13 +443,19 @@ export const CandidatesPage: React.FC = () => {
           </div>
           <div>
             <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.35rem' }}>
-              {isInterviewer ? 'No Candidates Assigned' : 'No Candidates Found'}
+              {isInterviewer ? 'No Assigned Applications Found' : 'No Applications Found'}
             </h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '420px' }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '420px', marginBottom: '1rem' }}>
               {isInterviewer
-                ? 'You currently have no candidate applications assigned to your interview panel.'
-                : 'No candidates match your current search or filter criteria. Add a candidate or adjust your filters.'}
+                ? 'You currently have no candidate applications assigned matching the selected filters.'
+                : 'No candidate applications match your current search and filter criteria.'}
             </p>
+            {hasActiveFilters && (
+              <button onClick={handleResetFilters} className="btn btn-secondary" style={{ padding: '0.45rem 0.9rem' }}>
+                <RotateCcw size={14} />
+                <span>Clear All Filters</span>
+              </button>
+            )}
           </div>
         </div>
       ) : (
@@ -351,6 +484,7 @@ export const CandidatesPage: React.FC = () => {
                   <th style={{ padding: '0.85rem 1.25rem' }}>Candidate</th>
                   <th style={{ padding: '0.85rem 1.25rem' }}>Job Opening</th>
                   <th style={{ padding: '0.85rem 1.25rem' }}>Current Stage</th>
+                  <th style={{ padding: '0.85rem 1.25rem' }}>Source</th>
                   <th style={{ padding: '0.85rem 1.25rem' }}>Interview Panel</th>
                   <th style={{ padding: '0.85rem 1.25rem' }}>Applied Date</th>
                   <th style={{ padding: '0.85rem 1.25rem', textAlign: 'right' }}>Actions</th>
@@ -412,6 +546,11 @@ export const CandidatesPage: React.FC = () => {
                             <span style={{ fontSize: '0.7rem', opacity: 0.8 }}> (from {app.rejected_from_stage})</span>
                           )}
                         </span>
+                      </td>
+
+                      {/* Source */}
+                      <td style={{ padding: '1rem 1.25rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                        {app.source}
                       </td>
 
                       {/* Interview Panel */}
@@ -482,19 +621,77 @@ export const CandidatesPage: React.FC = () => {
             </table>
           </div>
 
+          {/* Footer with Metadata & Pagination Controls */}
           <div
             style={{
-              padding: '0.75rem 1.25rem',
+              padding: '0.85rem 1.25rem',
               backgroundColor: 'var(--bg-main)',
               borderTop: '1px solid var(--border-color)',
-              fontSize: '0.8rem',
+              fontSize: '0.85rem',
               color: 'var(--text-muted)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '1rem',
             }}
           >
-            <span>Showing {applications.length} of {totalCount} total candidates</span>
+            {/* Metadata Count */}
+            <div>
+              Showing <strong style={{ color: 'var(--text-primary)' }}>{startRecord}–{endRecord}</strong> of <strong style={{ color: 'var(--text-primary)' }}>{totalCount}</strong> applications
+            </div>
+
+            {/* Pagination Actions */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              {/* Page size selector */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span style={{ fontSize: '0.8rem' }}>Rows per page:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(parseInt(e.target.value, 10));
+                    setPage(1);
+                  }}
+                  style={{
+                    padding: '0.25rem 0.5rem',
+                    backgroundColor: 'var(--bg-card)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 'var(--radius-sm)',
+                    color: 'var(--text-primary)',
+                    fontSize: '0.8rem',
+                  }}
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+
+              {/* Page Navigator */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="btn btn-secondary"
+                  style={{ padding: '0.25rem 0.5rem' }}
+                  title="Previous Page"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span style={{ fontSize: '0.8rem' }}>
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className="btn btn-secondary"
+                  style={{ padding: '0.25rem 0.5rem' }}
+                  title="Next Page"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

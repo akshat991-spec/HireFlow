@@ -90,10 +90,14 @@ applicationsRouter.get(
       const allowedSortColumns: Record<string, string> = {
         applied_date: 'a.applied_date',
         current_stage: 'a.current_stage',
+        stage: 'a.current_stage',
         updated_at: 'a.updated_at',
+        last_updated: 'a.updated_at',
         candidate_name: 'a.candidate_name',
+        candidate_email: 'a.candidate_email',
+        source: 'a.source',
       };
-      const orderColumn = allowedSortColumns[sortBy] || 'a.applied_date';
+      const orderColumn = allowedSortColumns[sortBy.toLowerCase()] || 'a.applied_date';
 
       // Count query
       const countSql = `SELECT COUNT(*) as total FROM applications a ${whereClause}`;
