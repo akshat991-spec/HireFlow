@@ -190,6 +190,129 @@ applicationsRouter.get(
   }
 );
 
+function escapeCsvCell(val: unknown): string {
+  if (val === null || val === undefined) {
+    return '';
+  }
+  const str = String(val);
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+// GET /api/applications/export - Export applications across all OPEN job openings as CSV (Recruiter only)
+applicationsRouter.get(
+  '/export',
+  authenticate,
+  requireRecruiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      // Query applications across all OPEN job openings
+      const exportSql = `
+        SELECT 
+          a.id,
+          a.candidate_name,
+          a.candidate_email,
+          a.source,
+          a.notes,
+          a.current_stage,
+          a.applied_date,
+          j.title as job_title,
+          j.department as job_department
+        FROM applications a
+        JOIN job_openings j ON a.job_opening_id = j.id
+        WHERE j.status = 'OPEN'
+        ORDER BY j.title ASC, a.applied_date DESC
+      `;
+
+      const dataRes = await query<{
+        id: string;
+        candidate_name: string;
+        candidate_email: string;
+        source: string;
+        notes: string | null;
+        current_stage: Stage;
+        applied_date: Date;
+        job_title: string;
+        job_department: string;
+      }>(exportSql);
+
+      // Fetch interviewer assignments for these applications
+      let interviewersMap: Record<string, string[]> = {};
+      if (dataRes.rows.length > 0) {
+        const appIds = dataRes.rows.map((a) => a.id);
+        const placeholders = appIds.map((_, i) => `$${i + 1}`).join(',');
+        const intvRes = await query<{
+          application_id: string;
+          name: string;
+        }>(
+          `SELECT ai.application_id, u.name
+           FROM application_interviewers ai
+           JOIN users u ON ai.user_id = u.id
+           WHERE ai.application_id IN (${placeholders})
+           ORDER BY u.name ASC`,
+          appIds
+        );
+
+        for (const row of intvRes.rows) {
+          if (!interviewersMap[row.application_id]) {
+            interviewersMap[row.application_id] = [];
+          }
+          interviewersMap[row.application_id].push(row.name);
+        }
+      }
+
+      // Build CSV headers and rows
+      const headers = [
+        'Application ID',
+        'Candidate Name',
+        'Candidate Email',
+        'Job Title',
+        'Department',
+        'Current Stage',
+        'Source',
+        'Applied Date',
+        'Interview Panel',
+        'Notes',
+      ];
+
+      const csvRows: string[] = [headers.map(escapeCsvCell).join(',')];
+
+      for (const app of dataRes.rows) {
+        const panelStr = (interviewersMap[app.id] || []).join('; ');
+        const appliedDateStr = app.applied_date
+          ? new Date(app.applied_date).toISOString()
+          : '';
+
+        const row = [
+          app.id,
+          app.candidate_name,
+          app.candidate_email,
+          app.job_title,
+          app.job_department,
+          app.current_stage,
+          app.source,
+          appliedDateStr,
+          panelStr,
+          app.notes || '',
+        ];
+
+        csvRows.push(row.map(escapeCsvCell).join(','));
+      }
+
+      const csvContent = csvRows.join('\r\n');
+      const filename = `hireflow_pipeline_export_${new Date().toISOString().split('T')[0]}.csv`;
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.status(200).send(csvContent);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 // GET /api/applications/:id - Detailed view with timeline and assigned panel
 applicationsRouter.get(
   '/:id',

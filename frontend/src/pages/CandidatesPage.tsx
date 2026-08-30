@@ -23,6 +23,8 @@ import {
   CheckSquare,
   Square,
   MinusSquare,
+  Download,
+  CheckCircle2,
 } from 'lucide-react';
 import { api } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.js';
@@ -218,6 +220,47 @@ export const CandidatesPage: React.FC = () => {
     }
   };
 
+  // CSV Export State
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportSuccess, setExportSuccess] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const handleExportCsv = async () => {
+    setIsExporting(true);
+    setExportError(null);
+    setExportSuccess(false);
+    try {
+      const token = localStorage.getItem('hireflow_token');
+      const response = await fetch('/api/applications/export', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorJson = await response.json().catch(() => ({}));
+        throw new Error(errorJson.message || 'Failed to export CSV');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `hireflow_pipeline_export_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      setExportSuccess(true);
+      setTimeout(() => setExportSuccess(false), 4000);
+    } catch (err: any) {
+      setExportError(err.message || 'Failed to export CSV');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const handleOpenDetail = (appId: string) => {
     setSelectedAppId(appId);
     setIsDetailModalOpen(true);
@@ -256,16 +299,67 @@ export const CandidatesPage: React.FC = () => {
         </div>
 
         {isRecruiter && (
-          <button
-            className="btn btn-primary"
-            onClick={handleCreateNewApp}
-            disabled={openings.length === 0}
-          >
-            <Plus size={18} />
-            <span>Add Candidate</span>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <button
+              className="btn btn-secondary"
+              onClick={handleExportCsv}
+              disabled={isExporting}
+              title="Export all open job opening applications to CSV"
+            >
+              <Download size={17} />
+              <span>{isExporting ? 'Exporting...' : 'Export CSV'}</span>
+            </button>
+
+            <button
+              className="btn btn-primary"
+              onClick={handleCreateNewApp}
+              disabled={openings.length === 0}
+            >
+              <Plus size={18} />
+              <span>Add Candidate</span>
+            </button>
+          </div>
         )}
       </div>
+
+      {/* CSV Export Success / Error Banners */}
+      {exportSuccess && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            backgroundColor: 'rgba(16, 185, 129, 0.15)',
+            border: '1px solid var(--success)',
+            color: '#6ee7b7',
+            padding: '0.75rem 1rem',
+            borderRadius: 'var(--radius-md)',
+            fontSize: '0.875rem',
+          }}
+        >
+          <CheckCircle2 size={18} />
+          <span>Pipeline snapshot CSV export downloaded successfully!</span>
+        </div>
+      )}
+
+      {exportError && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            backgroundColor: 'rgba(239, 68, 68, 0.15)',
+            border: '1px solid var(--danger)',
+            color: '#fca5a5',
+            padding: '0.75rem 1rem',
+            borderRadius: 'var(--radius-md)',
+            fontSize: '0.875rem',
+          }}
+        >
+          <AlertCircle size={18} />
+          <span>{exportError}</span>
+        </div>
+      )}
 
       {/* Role banner for interviewers */}
       {isInterviewer && (
