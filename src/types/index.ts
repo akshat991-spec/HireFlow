@@ -45,6 +45,21 @@ export interface User {
   updated_at: Date;
 }
 
+export interface UserPublic {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  created_at?: Date;
+}
+
+export interface AuthUserPayload {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+}
+
 export interface JobOpening {
   id: string;
   title: string;
@@ -68,6 +83,9 @@ export interface Application {
   rejected_from_stage?: Stage | null;
   created_at: Date;
   updated_at: Date;
+  job_title?: string;
+  department?: string;
+  interviewers?: UserPublic[];
 }
 
 export interface ApplicationInterviewer {
@@ -81,6 +99,8 @@ export interface TimelineEvent {
   application_id: string;
   event_type: EventType;
   actor_id?: string | null;
+  actor_name?: string | null;
+  actor_role?: Role | null;
   old_stage?: Stage | null;
   new_stage?: Stage | null;
   note_content?: string | null;

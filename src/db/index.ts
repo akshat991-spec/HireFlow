@@ -9,13 +9,17 @@ const isSslRequired = config.databaseUrl.includes('sslmode=require') ||
                       config.databaseUrl.includes('neon.tech') ||
                       config.isProduction;
 
-export const pool = new Pool({
+export let pool = new Pool({
   connectionString: config.databaseUrl,
   ssl: isSslRequired ? { rejectUnauthorized: false } : false,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
 });
+
+export function setPool(customPool: any): void {
+  pool = customPool;
+}
 
 pool.on('error', (err) => {
   console.error('Unexpected error on idle PostgreSQL client:', err);
