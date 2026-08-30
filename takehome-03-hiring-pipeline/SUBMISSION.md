@@ -35,7 +35,7 @@ Mark each honestly. Partial is fine — say what is partial.
 | # | Goal | Status | Notes |
 |---|------|--------|-------|
 | 1 | Accounts and roles | Done | Server-enforced RBAC (Recruiter vs Interviewer), secure password hashing (bcrypt), and JWT auth. |
-| 2 | Job openings | Partial | Openings CRUD and archive/restore endpoints implemented and protected. |
+| 2 | Job openings | Done | Complete CRUD, archive/restore lifecycle, default active view scoping, application preservation, and frontend management interface. |
 | 3 | Applications inside job openings | Partial | Application model and stage routing implemented. |
 | 4 | A pipeline with rules | Partial | Linear stage validation and rejection restoration implemented on backend. |
 | 5 | Interview panel | Partial | Many-to-many panel assignment with server-side interviewer role validation. |

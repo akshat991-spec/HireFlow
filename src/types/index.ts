@@ -68,6 +68,9 @@ export interface JobOpening {
   status: OpeningStatus;
   created_at: Date;
   updated_at: Date;
+  application_count?: number;
+  active_count?: number;
+  applications?: Application[];
 }
 
 export interface Application {

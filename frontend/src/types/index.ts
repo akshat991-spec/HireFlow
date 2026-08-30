@@ -25,6 +25,36 @@ export interface User {
   created_at: string;
 }
 
+export interface JobOpening {
+  id: string;
+  title: string;
+  department: string;
+  description: string;
+  status: OpeningStatus;
+  created_at: string;
+  updated_at: string;
+  application_count?: number;
+  active_count?: number;
+  applications?: Application[];
+}
+
+export interface Application {
+  id: string;
+  job_opening_id: string;
+  candidate_name: string;
+  candidate_email: string;
+  source: string;
+  notes?: string | null;
+  current_stage: Stage;
+  applied_date: string;
+  stage_entered_at: string;
+  rejected_from_stage?: Stage | null;
+  created_at: string;
+  updated_at: string;
+  job_title?: string;
+  department?: string;
+}
+
 export interface ApiResponse<T = unknown> {
   success: boolean;
   data: T;
