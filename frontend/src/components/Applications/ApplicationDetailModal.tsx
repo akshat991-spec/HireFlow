@@ -668,10 +668,24 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
 
             {/* Timeline Audit History */}
             <div style={{ marginTop: '0.5rem' }}>
-              <h3 style={{ fontSize: '0.95rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.75rem' }}>
-                <Clock size={18} color="var(--accent)" />
-                <span>Application Timeline & Audit Log</span>
-              </h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <h3 style={{ fontSize: '0.95rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <Clock size={18} color="var(--accent)" />
+                  <span>Immutable Application Timeline & Audit History</span>
+                </h3>
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    color: 'var(--text-muted)',
+                    backgroundColor: 'var(--bg-main)',
+                    padding: '0.2rem 0.55rem',
+                    borderRadius: 'var(--radius-full)',
+                    border: '1px solid var(--border-color)',
+                  }}
+                >
+                  Append-Only • {timeline.length} Events
+                </span>
+              </div>
 
               <div
                 style={{
@@ -679,27 +693,52 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                   borderRadius: 'var(--radius-sm)',
                   border: '1px solid var(--border-color)',
                   padding: '1rem',
-                  maxHeight: '260px',
+                  maxHeight: '320px',
                   overflowY: 'auto',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '0.75rem',
+                  gap: '0.85rem',
                 }}
               >
                 {timeline.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                  <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                     No timeline events recorded yet.
                   </div>
                 ) : (
                   timeline.map((evt) => {
+                    let badgeBg = 'rgba(100, 116, 139, 0.2)';
                     let badgeColor = 'var(--text-muted)';
-                    if (evt.event_type === EventType.APPLICATION_CREATED) badgeColor = 'var(--info)';
-                    if (evt.event_type === EventType.STAGE_CHANGE) badgeColor = 'var(--primary)';
-                    if (evt.event_type === EventType.REJECTION) badgeColor = 'var(--danger)';
-                    if (evt.event_type === EventType.REINSTATEMENT) badgeColor = 'var(--success)';
-                    if (evt.event_type === EventType.INTERVIEWER_ASSIGNED) badgeColor = 'var(--secondary)';
-                    if (evt.event_type === EventType.INTERVIEWER_REMOVED) badgeColor = 'var(--warning)';
-                    if (evt.event_type === EventType.INTERVIEWER_FEEDBACK) badgeColor = 'var(--accent)';
+                    let badgeBorder = 'var(--border-color)';
+
+                    if (evt.event_type === EventType.APPLICATION_CREATED) {
+                      badgeBg = 'rgba(59, 130, 246, 0.15)';
+                      badgeColor = '#93c5fd';
+                      badgeBorder = 'rgba(59, 130, 246, 0.3)';
+                    } else if (evt.event_type === EventType.STAGE_CHANGE) {
+                      badgeBg = 'rgba(79, 70, 229, 0.15)';
+                      badgeColor = '#a5b4fc';
+                      badgeBorder = 'rgba(79, 70, 229, 0.3)';
+                    } else if (evt.event_type === EventType.REJECTION) {
+                      badgeBg = 'rgba(239, 68, 68, 0.15)';
+                      badgeColor = '#fca5a5';
+                      badgeBorder = 'rgba(239, 68, 68, 0.3)';
+                    } else if (evt.event_type === EventType.REINSTATEMENT) {
+                      badgeBg = 'rgba(16, 185, 129, 0.15)';
+                      badgeColor = '#6ee7b7';
+                      badgeBorder = 'rgba(16, 185, 129, 0.3)';
+                    } else if (evt.event_type === EventType.INTERVIEWER_ASSIGNED) {
+                      badgeBg = 'rgba(14, 165, 233, 0.15)';
+                      badgeColor = '#7dd3fc';
+                      badgeBorder = 'rgba(14, 165, 233, 0.3)';
+                    } else if (evt.event_type === EventType.INTERVIEWER_REMOVED) {
+                      badgeBg = 'rgba(245, 158, 11, 0.15)';
+                      badgeColor = '#fcd34d';
+                      badgeBorder = 'rgba(245, 158, 11, 0.3)';
+                    } else if (evt.event_type === EventType.INTERVIEWER_FEEDBACK) {
+                      badgeBg = 'rgba(139, 92, 246, 0.15)';
+                      badgeColor = '#c4b5fd';
+                      badgeBorder = 'rgba(139, 92, 246, 0.3)';
+                    }
 
                     return (
                       <div
@@ -707,33 +746,74 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                         style={{
                           display: 'flex',
                           flexDirection: 'column',
-                          gap: '0.2rem',
-                          paddingBottom: '0.6rem',
-                          borderBottom: '1px solid var(--border-color)',
+                          gap: '0.35rem',
+                          padding: '0.75rem',
+                          backgroundColor: 'var(--bg-card)',
+                          borderRadius: 'var(--radius-sm)',
+                          border: '1px solid var(--border-color)',
                         }}
                       >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
-                          <span
-                            style={{
-                              fontWeight: 700,
-                              textTransform: 'uppercase',
-                              color: badgeColor,
-                            }}
-                          >
-                            {evt.event_type.replace('_', ' ')}
-                          </span>
-                          <span style={{ color: 'var(--text-muted)' }}>
+                        {/* Event Header: Type, Stage Transition, Timestamp */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <span
+                              style={{
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                padding: '0.15rem 0.5rem',
+                                borderRadius: 'var(--radius-full)',
+                                backgroundColor: badgeBg,
+                                color: badgeColor,
+                                border: `1px solid ${badgeBorder}`,
+                              }}
+                            >
+                              {evt.event_type.replace(/_/g, ' ')}
+                            </span>
+
+                            {/* Stage Transition Indicator */}
+                            {evt.old_stage && evt.new_stage && evt.old_stage !== evt.new_stage && (
+                              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                <span style={{ color: 'var(--text-muted)' }}>{evt.old_stage}</span>
+                                <span>→</span>
+                                <span style={{ color: 'var(--primary-light)' }}>{evt.new_stage}</span>
+                              </span>
+                            )}
+                          </div>
+
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                             {new Date(evt.created_at).toLocaleString()}
                           </span>
                         </div>
 
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
-                          {evt.note_content}
-                        </div>
+                        {/* Event Body / Note / Feedback */}
+                        {evt.event_type === EventType.INTERVIEWER_FEEDBACK ? (
+                          <div
+                            style={{
+                              fontSize: '0.875rem',
+                              color: 'var(--text-primary)',
+                              backgroundColor: 'var(--bg-main)',
+                              padding: '0.5rem 0.75rem',
+                              borderRadius: 'var(--radius-sm)',
+                              borderLeft: '3px solid var(--accent)',
+                              marginTop: '0.2rem',
+                              fontStyle: 'italic',
+                            }}
+                          >
+                            "{evt.note_content}"
+                          </div>
+                        ) : (
+                          evt.note_content && (
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', marginTop: '0.1rem' }}>
+                              {evt.note_content}
+                            </div>
+                          )
+                        )}
 
+                        {/* Actor Info */}
                         {evt.actor_name && (
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                            by {evt.actor_name} ({evt.actor_role})
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                            Action by: <strong style={{ color: 'var(--text-secondary)' }}>{evt.actor_name}</strong> ({evt.actor_role})
                           </div>
                         )}
                       </div>

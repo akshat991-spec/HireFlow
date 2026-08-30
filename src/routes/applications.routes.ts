@@ -275,6 +275,47 @@ applicationsRouter.get(
   }
 );
 
+// GET /api/applications/:id/timeline - Dedicated application timeline endpoint
+applicationsRouter.get(
+  '/:id/timeline',
+  authenticate,
+  requireApplicationAccess('VIEW'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const applicationId = req.params.id;
+
+      const timelineRes = await query<TimelineEvent>(
+        `SELECT 
+          t.id,
+          t.application_id,
+          t.event_type,
+          t.actor_id,
+          u.name as actor_name,
+          u.role as actor_role,
+          t.old_stage,
+          t.new_stage,
+          t.note_content,
+          t.created_at
+        FROM timeline_events t
+        LEFT JOIN users u ON t.actor_id = u.id
+        WHERE t.application_id = $1
+        ORDER BY t.created_at ASC`,
+        [applicationId]
+      );
+
+      const response: ApiResponse<TimelineEvent[]> = {
+        success: true,
+        data: timelineRes.rows,
+        message: 'Application timeline retrieved successfully',
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 const applicationSchema = z.object({
   job_opening_id: z.string().min(1, 'Job opening ID is required'),
   candidate_name: z.string().trim().min(1, 'Candidate name is required'),
