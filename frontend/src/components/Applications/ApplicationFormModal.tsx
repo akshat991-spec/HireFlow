@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 import { api } from '../../services/api.js';
 import { Application } from '../../types/index.js';
 
@@ -270,8 +270,10 @@ export const ApplicationFormModal: React.FC<ApplicationFormModalProps> = ({
               type="submit"
               disabled={submitting}
               className="btn btn-primary"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
             >
-              {submitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Add Candidate'}
+              {submitting && <Loader2 size={15} className="animate-spin" />}
+              <span>{submitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Add Candidate'}</span>
             </button>
           </div>
         </form>

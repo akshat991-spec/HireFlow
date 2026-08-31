@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 import { api } from '../../services/api.js';
 import { JobOpening, OpeningStatus } from '../../types/index.js';
 
@@ -272,8 +272,10 @@ export const OpeningFormModal: React.FC<OpeningFormModalProps> = ({
               type="submit"
               disabled={submitting}
               className="btn btn-primary"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
             >
-              {submitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Create Opening'}
+              {submitting && <Loader2 size={15} className="animate-spin" />}
+              <span>{submitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Create Opening'}</span>
             </button>
           </div>
         </form>

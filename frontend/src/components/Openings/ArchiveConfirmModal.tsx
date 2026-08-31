@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Archive, AlertTriangle } from 'lucide-react';
+import { Archive, AlertTriangle, Loader2 } from 'lucide-react';
 import { api } from '../../services/api.js';
 import { JobOpening, OpeningStatus } from '../../types/index.js';
 
@@ -143,11 +143,14 @@ export const ArchiveConfirmModal: React.FC<ArchiveConfirmModalProps> = ({
               backgroundColor: 'var(--warning)',
               color: '#000000',
               fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
             }}
             className="btn"
           >
-            <Archive size={16} />
-            {submitting ? 'Archiving...' : 'Confirm Archive'}
+            {submitting ? <Loader2 size={16} className="animate-spin" /> : <Archive size={16} />}
+            <span>{submitting ? 'Archiving...' : 'Confirm Archive'}</span>
           </button>
         </div>
       </div>

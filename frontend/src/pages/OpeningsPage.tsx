@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Briefcase, Plus, Search, Archive, RotateCcw, Edit2, Eye, Users, AlertCircle } from 'lucide-react';
+import { Briefcase, Plus, Search, Archive, RotateCcw, Edit2, Eye, Users, AlertCircle, Loader2 } from 'lucide-react';
 import { api } from '../services/api.js';
 import { JobOpening, OpeningStatus } from '../types/index.js';
 import { OpeningFormModal } from '../components/Openings/OpeningFormModal.js';
@@ -22,6 +22,7 @@ export const OpeningsPage: React.FC = () => {
 
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedOpeningId, setSelectedOpeningId] = useState<string | null>(null);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
 
   const fetchOpenings = async () => {
     setLoading(true);
@@ -63,6 +64,7 @@ export const OpeningsPage: React.FC = () => {
   };
 
   const handleRestoreClick = async (opening: JobOpening) => {
+    setRestoringId(opening.id);
     try {
       const res = await api.post<{ id: string; status: OpeningStatus }>(`/api/openings/${opening.id}/restore`);
       if (res.success) {
@@ -71,6 +73,8 @@ export const OpeningsPage: React.FC = () => {
       }
     } catch (err: any) {
       (window as any).showToast?.(err.message || 'Failed to restore opening', 'error');
+    } finally {
+      setRestoringId(null);
     }
   };
 
@@ -374,11 +378,12 @@ export const OpeningsPage: React.FC = () => {
                   ) : (
                     <button
                       onClick={() => handleRestoreClick(opening)}
-                      title="Restore Opening"
+                      disabled={restoringId === opening.id}
+                      title="Restore Opening to active status"
                       className="btn btn-secondary"
                       style={{ padding: '0.4rem 0.6rem', color: 'var(--success)' }}
                     >
-                      <RotateCcw size={15} />
+                      {restoringId === opening.id ? <Loader2 size={15} className="animate-spin" /> : <RotateCcw size={15} />}
                     </button>
                   )}
                 </div>

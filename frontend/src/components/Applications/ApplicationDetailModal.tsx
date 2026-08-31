@@ -18,7 +18,12 @@ import {
   MessageSquare,
   Clock,
   UserCheck,
+  UserMinus,
   Tag,
+  Loader2,
+  AlertTriangle,
+  ArrowRight,
+  Shield,
 } from 'lucide-react';
 import { api } from '../../services/api.js';
 import {
@@ -92,6 +97,12 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
   const [showStageNoteInput, setShowStageNoteInput] = useState(false);
   const [pendingNextStage, setPendingNextStage] = useState<Stage | null>(null);
 
+  // Rejection & Reinstatement Confirmation States
+  const [showRejectConfirm, setShowRejectConfirm] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [showReinstateConfirm, setShowReinstateConfirm] = useState(false);
+  const [reinstateNote, setReinstateNote] = useState('');
+
   const isRecruiter = currentUser?.role === Role.RECRUITER;
 
   const fetchApplicationDetails = async () => {
@@ -144,6 +155,10 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
       setStageNote('');
       setShowStageNoteInput(false);
       setPendingNextStage(null);
+      setShowRejectConfirm(false);
+      setShowReinstateConfirm(false);
+      setRejectReason('');
+      setReinstateNote('');
       setActiveTab('overview');
     }
   }, [isOpen, applicationId, isRecruiter]);
@@ -166,14 +181,14 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
 
   // Handle Assign Interviewer
   const handleAssignInterviewer = async () => {
-    if (!selectedInterviewerId || !applicationId) return;
+    if (!applicationId || !selectedInterviewerId) return;
     setActionLoading(true);
     try {
       const res = await api.post(`/api/applications/${applicationId}/interviewers`, {
         userId: selectedInterviewerId,
       });
       if (res.success) {
-        (window as any).showToast?.('Interviewer assigned to panel', 'success');
+        (window as any).showToast?.('Interviewer added to panel', 'success');
         setSelectedInterviewerId('');
         fetchApplicationDetails();
         onApplicationUpdated?.();
@@ -230,16 +245,15 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
   // Handle Rejection
   const handleReject = async () => {
     if (!applicationId) return;
-    const note = prompt('Please provide a reason or note for rejecting this candidate:');
-    if (note === null) return;
-
     setActionLoading(true);
     try {
       const res = await api.post(`/api/applications/${applicationId}/reject`, {
-        note: note.trim() || undefined,
+        note: rejectReason.trim() || undefined,
       });
       if (res.success) {
         (window as any).showToast?.('Candidate marked as rejected', 'success');
+        setShowRejectConfirm(false);
+        setRejectReason('');
         fetchApplicationDetails();
         onApplicationUpdated?.();
       }
@@ -256,10 +270,12 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
     setActionLoading(true);
     try {
       const res = await api.post<{ current_stage: Stage }>(`/api/applications/${applicationId}/reinstate`, {
-        note: 'Candidate reinstated by recruiter',
+        note: reinstateNote.trim() || 'Candidate reinstated by recruiter',
       });
       if (res.success) {
         (window as any).showToast?.(`Candidate reinstated to ${res.data.current_stage}`, 'success');
+        setShowReinstateConfirm(false);
+        setReinstateNote('');
         fetchApplicationDetails();
         onApplicationUpdated?.();
       }
@@ -408,28 +424,34 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
           </div>
 
           {/* Action Buttons & Close */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
             {isRecruiter && application && (
               <>
-                {application.current_stage !== Stage.REJECTED && (
+                {/* Reject Button (Only if not already rejected) */}
+                {application.current_stage !== Stage.REJECTED && !showRejectConfirm && !showStageNoteInput && (
                   <button
                     className="btn btn-secondary"
-                    onClick={handleReject}
+                    onClick={() => {
+                      setShowRejectConfirm(true);
+                      setShowStageNoteInput(false);
+                    }}
                     disabled={actionLoading}
                     style={{
                       padding: '0.55rem 1.15rem',
                       fontSize: '0.875rem',
                       fontWeight: 600,
-                      color: '#475569',
+                      color: '#dc2626',
                       backgroundColor: '#ffffff',
-                      borderColor: '#e2e8f0',
+                      borderColor: '#fca5a5',
                     }}
+                    title="Reject this candidate from the hiring pipeline"
                   >
-                    Reject
+                    Reject Candidate
                   </button>
                 )}
 
-                {application.current_stage !== Stage.REJECTED && nextStage && (
+                {/* Advance Button (Only if next stage exists) */}
+                {application.current_stage !== Stage.REJECTED && nextStage && !showStageNoteInput && !showRejectConfirm && (
                   <button
                     className="btn btn-primary"
                     onClick={() => {
@@ -445,26 +467,32 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                       color: '#ffffff',
                       borderRadius: '8px',
                       boxShadow: '0 2px 8px rgba(0, 102, 255, 0.25)',
+                      gap: '0.5rem',
                     }}
+                    title={`Advance candidate directly to ${nextStage}`}
                   >
-                    Advance to {nextStage}
+                    <span>Advance to {nextStage}</span>
+                    <ArrowRight size={16} />
                   </button>
                 )}
 
-                {application.current_stage === Stage.REJECTED && (
+                {/* Reinstate Button (Only if REJECTED) */}
+                {application.current_stage === Stage.REJECTED && !showReinstateConfirm && (
                   <button
                     className="btn btn-primary"
-                    onClick={handleReinstate}
+                    onClick={() => setShowReinstateConfirm(true)}
                     disabled={actionLoading}
                     style={{
                       padding: '0.55rem 1.35rem',
                       fontSize: '0.875rem',
                       fontWeight: 700,
                       backgroundColor: '#059669',
+                      gap: '0.5rem',
                     }}
+                    title={`Restore candidate to ${application.rejected_from_stage || 'previous stage'}`}
                   >
                     <RotateCcw size={16} />
-                    <span>Reinstate Candidate</span>
+                    <span>Reinstate to {application.rejected_from_stage || 'Pipeline'}</span>
                   </button>
                 )}
               </>
@@ -488,49 +516,186 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
           </div>
         </div>
 
-        {/* Note input prompt for advancement */}
+        {/* 1A. Stage Advancement Confirmation Banner */}
         {showStageNoteInput && pendingNextStage && (
           <div
             style={{
               display: 'flex',
-              gap: '0.5rem',
-              padding: '0.75rem',
-              backgroundColor: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: '8px',
+              flexDirection: 'column',
+              gap: '0.75rem',
+              padding: '1rem 1.25rem',
+              backgroundColor: '#eff6ff',
+              border: '1px solid #bfdbfe',
+              borderRadius: '10px',
+              animation: 'fadeIn 150ms ease',
             }}
           >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1d4ed8', fontWeight: 700, fontSize: '0.9rem' }}>
+              <ArrowRight size={17} />
+              <span>Advance Candidate to <strong>{pendingNextStage}</strong> Stage</span>
+            </div>
             <input
               type="text"
-              placeholder={`Optional note for moving candidate to ${pendingNextStage}...`}
+              placeholder={`Optional note or transition assessment for moving to ${pendingNextStage}...`}
               value={stageNote}
               onChange={(e) => setStageNote(e.target.value)}
+              disabled={actionLoading}
               style={{
-                flex: 1,
-                padding: '0.45rem 0.85rem',
+                width: '100%',
+                padding: '0.5rem 0.85rem',
                 border: '1px solid #cbd5e1',
                 borderRadius: '6px',
                 fontSize: '0.875rem',
+                backgroundColor: '#ffffff',
               }}
+              autoFocus
             />
-            <button
-              className="btn btn-primary"
-              onClick={() => handleAdvanceStage(pendingNextStage)}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  setShowStageNoteInput(false);
+                  setPendingNextStage(null);
+                }}
+                disabled={actionLoading}
+                style={{ padding: '0.45rem 0.95rem', fontSize: '0.85rem' }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => handleAdvanceStage(pendingNextStage)}
+                disabled={actionLoading}
+                style={{ padding: '0.45rem 1.15rem', fontSize: '0.85rem', backgroundColor: '#0066ff' }}
+              >
+                {actionLoading && <Loader2 size={14} className="animate-spin" />}
+                <span>Confirm Advance to {pendingNextStage}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 1B. Rejection Confirmation Banner */}
+        {showRejectConfirm && (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
+              padding: '1rem 1.25rem',
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: '10px',
+              animation: 'fadeIn 150ms ease',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#b91c1c', fontWeight: 700, fontSize: '0.9rem' }}>
+              <AlertTriangle size={18} />
+              <span>Confirm Candidate Rejection</span>
+            </div>
+            <div style={{ fontSize: '0.85rem', color: '#7f1d1d' }}>
+              Are you sure you want to reject <strong>{application?.candidate_name}</strong> from the active pipeline? Progression will be stopped at <strong>{application?.current_stage}</strong> stage. You can reinstate this candidate later.
+            </div>
+            <input
+              type="text"
+              placeholder="Provide an optional rejection reason or feedback notes..."
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
               disabled={actionLoading}
-              style={{ padding: '0.45rem 0.95rem', fontSize: '0.85rem' }}
-            >
-              Confirm Move
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={() => {
-                setShowStageNoteInput(false);
-                setPendingNextStage(null);
+              style={{
+                width: '100%',
+                padding: '0.5rem 0.85rem',
+                border: '1px solid #fca5a5',
+                borderRadius: '6px',
+                fontSize: '0.875rem',
+                backgroundColor: '#ffffff',
               }}
-              style={{ padding: '0.45rem 0.85rem', fontSize: '0.85rem' }}
-            >
-              Cancel
-            </button>
+              autoFocus
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  setShowRejectConfirm(false);
+                  setRejectReason('');
+                }}
+                disabled={actionLoading}
+                style={{ padding: '0.45rem 0.95rem', fontSize: '0.85rem' }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={handleReject}
+                disabled={actionLoading}
+                style={{ padding: '0.45rem 1.15rem', fontSize: '0.85rem' }}
+              >
+                {actionLoading && <Loader2 size={14} className="animate-spin" />}
+                <span>Confirm Rejection</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 1C. Reinstatement Confirmation Banner */}
+        {showReinstateConfirm && (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
+              padding: '1rem 1.25rem',
+              backgroundColor: '#ecfdf5',
+              border: '1px solid #a7f3d0',
+              borderRadius: '10px',
+              animation: 'fadeIn 150ms ease',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#047857', fontWeight: 700, fontSize: '0.9rem' }}>
+              <RotateCcw size={17} />
+              <span>Reinstate Candidate to Active Pipeline</span>
+            </div>
+            <div style={{ fontSize: '0.85rem', color: '#065f46' }}>
+              This will restore <strong>{application?.candidate_name}</strong> to their previous stage: <strong>{application?.rejected_from_stage || 'APPLIED'}</strong>.
+            </div>
+            <input
+              type="text"
+              placeholder="Optional reinstatement note..."
+              value={reinstateNote}
+              onChange={(e) => setReinstateNote(e.target.value)}
+              disabled={actionLoading}
+              style={{
+                width: '100%',
+                padding: '0.5rem 0.85rem',
+                border: '1px solid #6ee7b7',
+                borderRadius: '6px',
+                fontSize: '0.875rem',
+                backgroundColor: '#ffffff',
+              }}
+              autoFocus
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  setShowReinstateConfirm(false);
+                  setReinstateNote('');
+                }}
+                disabled={actionLoading}
+                style={{ padding: '0.45rem 0.95rem', fontSize: '0.85rem' }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleReinstate}
+                disabled={actionLoading}
+                style={{ padding: '0.45rem 1.15rem', fontSize: '0.85rem', backgroundColor: '#059669' }}
+              >
+                {actionLoading && <Loader2 size={14} className="animate-spin" />}
+                <span>Confirm Reinstatement</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -1132,40 +1297,94 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
 
             {/* TAB: History (Audit Log) */}
             {activeTab === 'history' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
-                  Complete immutable timeline of all stage transitions, interviewer assignments, and notes.
+                  Complete immutable timeline of all stage transitions, interviewer assignments, feedback, and notes.
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-                  {timeline.map((evt) => (
-                    <div
-                      key={evt.id}
-                      style={{
-                        padding: '0.75rem 1rem',
-                        backgroundColor: '#f8fafc',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '8px',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: '0.85rem', color: '#0f172a' }}>
-                          {evt.event_type.replace(/_/g, ' ')}
-                        </div>
-                        {evt.note_content && (
-                          <div style={{ fontSize: '0.8rem', color: '#475569', marginTop: '0.15rem' }}>
-                            {evt.note_content}
+                {timeline.length === 0 ? (
+                  <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
+                    No timeline events recorded yet.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {timeline.map((evt) => {
+                      const isStageChange = evt.event_type === EventType.STAGE_CHANGE;
+                      const isFeedback = evt.event_type === EventType.INTERVIEWER_FEEDBACK;
+                      const isPanel = evt.event_type === EventType.INTERVIEWER_ASSIGNED || evt.event_type === EventType.INTERVIEWER_REMOVED;
+                      const isRejection = evt.event_type === EventType.REJECTION || evt.new_stage === Stage.REJECTED;
+                      const isReinstated = evt.event_type === EventType.REINSTATEMENT || evt.old_stage === Stage.REJECTED;
+
+                      return (
+                        <div
+                          key={evt.id}
+                          style={{
+                            padding: '1rem 1.25rem',
+                            backgroundColor: '#ffffff',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '10px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.45rem',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                              {/* Event Badge */}
+                              <span
+                                style={{
+                                  padding: '0.2rem 0.6rem',
+                                  borderRadius: 'var(--radius-full)',
+                                  fontSize: '0.725rem',
+                                  fontWeight: 700,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.04em',
+                                  backgroundColor: isRejection ? '#fef2f2' : isReinstated ? '#ecfdf5' : isStageChange ? '#eff6ff' : isFeedback ? '#f5f3ff' : '#f0f9ff',
+                                  color: isRejection ? '#dc2626' : isReinstated ? '#059669' : isStageChange ? '#2563eb' : isFeedback ? '#7c3aed' : '#0284c7',
+                                  border: `1px solid ${isRejection ? '#fecaca' : isReinstated ? '#a7f3d0' : isStageChange ? '#bfdbfe' : isFeedback ? '#ddd6fe' : '#bae6fd'}`,
+                                }}
+                              >
+                                {isRejection ? 'REJECTED' : isReinstated ? 'REINSTATED' : isStageChange ? 'STAGE ADVANCE' : isFeedback ? 'EVALUATION' : isPanel ? 'PANEL UPDATE' : evt.event_type.replace(/_/g, ' ')}
+                              </span>
+
+                              {/* Stage Transition summary */}
+                              {isStageChange && evt.old_stage && evt.new_stage && (
+                                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a' }}>
+                                  {evt.old_stage} → {evt.new_stage}
+                                </span>
+                              )}
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.75rem', color: '#64748b' }}>
+                              {evt.actor_name && (
+                                <span>by <strong>{evt.actor_name}</strong></span>
+                              )}
+                              <span>•</span>
+                              <span>{formatRelativeTime(evt.created_at)}</span>
+                            </div>
                           </div>
-                        )}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                        {new Date(evt.created_at).toLocaleString()}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+
+                          {evt.note_content && (
+                            <div
+                              style={{
+                                fontSize: '0.85rem',
+                                color: '#334155',
+                                backgroundColor: '#f8fafc',
+                                padding: '0.5rem 0.75rem',
+                                borderRadius: '6px',
+                                borderLeft: '3px solid #cbd5e1',
+                                marginTop: '0.2rem',
+                                fontStyle: isFeedback ? 'italic' : 'normal',
+                              }}
+                            >
+                              {evt.note_content}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </>

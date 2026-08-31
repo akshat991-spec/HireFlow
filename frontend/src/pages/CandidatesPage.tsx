@@ -16,6 +16,8 @@ import {
   UserX,
   Download,
   CheckCircle2,
+  Loader2,
+  AlertTriangle,
 } from 'lucide-react';
 import { api } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.js';
@@ -64,6 +66,7 @@ export const CandidatesPage: React.FC = () => {
   // Bulk Selection State
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  const [isConfirmingBulkReject, setIsConfirmingBulkReject] = useState(false);
   const [bulkSummaryData, setBulkSummaryData] = useState<BulkActionSummaryData | null>(null);
 
   // CSV Export State
@@ -201,6 +204,11 @@ export const CandidatesPage: React.FC = () => {
   // Bulk reject handler
   const handleBulkReject = async () => {
     if (selectedIds.length === 0 || isBulkProcessing) return;
+    if (!isConfirmingBulkReject) {
+      setIsConfirmingBulkReject(true);
+      return;
+    }
+
     setIsBulkProcessing(true);
     try {
       const res = await api.post<any>('/api/applications/bulk/reject', {
@@ -217,6 +225,7 @@ export const CandidatesPage: React.FC = () => {
           results: res.data.results,
         });
         setSelectedIds([]);
+        setIsConfirmingBulkReject(false);
         fetchApplications();
       }
     } catch (err: any) {
@@ -377,8 +386,8 @@ export const CandidatesPage: React.FC = () => {
       {isRecruiter && selectedIds.length > 0 && (
         <div
           style={{
-            backgroundColor: '#ffffff',
-            border: '1px solid #cbd5e1',
+            backgroundColor: isConfirmingBulkReject ? '#fef2f2' : '#ffffff',
+            border: isConfirmingBulkReject ? '1px solid #fecaca' : '1px solid #cbd5e1',
             borderRadius: 'var(--radius-md)',
             padding: '0.75rem 1.25rem',
             display: 'flex',
@@ -387,64 +396,98 @@ export const CandidatesPage: React.FC = () => {
             gap: '1rem',
             boxShadow: 'var(--shadow-md)',
             animation: 'fadeIn 200ms ease',
+            flexWrap: 'wrap',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span
-              style={{
-                backgroundColor: 'var(--gold-bg)',
-                color: 'var(--gold-light)',
-                border: '1px solid var(--gold-border)',
-                padding: '0.2rem 0.6rem',
-                borderRadius: 'var(--radius-full)',
-                fontWeight: 800,
-                fontSize: '0.8rem',
-              }}
-            >
-              {selectedIds.length}
-            </span>
-            <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#0f172a' }}>
-              Candidate{selectedIds.length > 1 ? 's' : ''} Selected
-            </span>
-          </div>
+          {isConfirmingBulkReject ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#b91c1c', fontWeight: 600, fontSize: '0.875rem' }}>
+                <AlertTriangle size={18} />
+                <span>Are you sure you want to reject <strong>{selectedIds.length}</strong> selected candidate{selectedIds.length > 1 ? 's' : ''}?</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <button
+                  onClick={() => setIsConfirmingBulkReject(false)}
+                  disabled={isBulkProcessing}
+                  className="btn btn-secondary"
+                  style={{ padding: '0.4rem 0.85rem', fontSize: '0.85rem' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleBulkReject}
+                  disabled={isBulkProcessing}
+                  className="btn btn-danger"
+                  style={{ padding: '0.4rem 0.95rem', fontSize: '0.85rem', gap: '0.4rem' }}
+                >
+                  {isBulkProcessing && <Loader2 size={14} className="animate-spin" />}
+                  <span>Confirm Bulk Rejection</span>
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span
+                  style={{
+                    backgroundColor: 'var(--gold-bg)',
+                    color: 'var(--gold-light)',
+                    border: '1px solid var(--gold-border)',
+                    padding: '0.2rem 0.6rem',
+                    borderRadius: 'var(--radius-full)',
+                    fontWeight: 800,
+                    fontSize: '0.8rem',
+                  }}
+                >
+                  {selectedIds.length}
+                </span>
+                <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#0f172a' }}>
+                  Candidate{selectedIds.length > 1 ? 's' : ''} Selected
+                </span>
+              </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <button
-              onClick={handleBulkAdvance}
-              disabled={isBulkProcessing}
-              className="btn btn-primary"
-              style={{ padding: '0.4rem 0.85rem', fontSize: '0.85rem', gap: '0.4rem' }}
-              title="Advance each selected candidate to their next valid stage"
-            >
-              <FastForward size={15} />
-              <span>Bulk Advance</span>
-            </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <button
+                  onClick={handleBulkAdvance}
+                  disabled={isBulkProcessing}
+                  className="btn btn-primary"
+                  style={{ padding: '0.4rem 0.85rem', fontSize: '0.85rem', gap: '0.4rem' }}
+                  title="Advance each selected candidate to their next valid stage"
+                >
+                  {isBulkProcessing ? <Loader2 size={14} className="animate-spin" /> : <FastForward size={15} />}
+                  <span>Bulk Advance</span>
+                </button>
 
-            <button
-              onClick={handleBulkReject}
-              disabled={isBulkProcessing}
-              className="btn btn-secondary"
-              style={{
-                padding: '0.4rem 0.85rem',
-                fontSize: '0.85rem',
-                gap: '0.4rem',
-                color: 'var(--danger)',
-                borderColor: '#fca5a5',
-              }}
-              title="Reject selected candidates"
-            >
-              <UserX size={15} />
-              <span>Bulk Reject</span>
-            </button>
+                <button
+                  onClick={handleBulkReject}
+                  disabled={isBulkProcessing}
+                  className="btn btn-secondary"
+                  style={{
+                    padding: '0.4rem 0.85rem',
+                    fontSize: '0.85rem',
+                    gap: '0.4rem',
+                    color: 'var(--danger)',
+                    borderColor: '#fca5a5',
+                  }}
+                  title="Reject selected candidates"
+                >
+                  <UserX size={15} />
+                  <span>Bulk Reject</span>
+                </button>
 
-            <button
-              onClick={() => setSelectedIds([])}
-              className="btn btn-secondary"
-              style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
-            >
-              Deselect
-            </button>
-          </div>
+                <button
+                  onClick={() => {
+                    setSelectedIds([]);
+                    setIsConfirmingBulkReject(false);
+                  }}
+                  className="btn btn-secondary"
+                  style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
+                >
+                  Deselect
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -592,7 +635,7 @@ export const CandidatesPage: React.FC = () => {
             style={{ padding: '0.5rem 0.95rem', fontSize: '0.85rem', gap: '0.45rem' }}
             title="Export all active applications to CSV"
           >
-            <Download size={15} />
+            {isExporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
             <span>{isExporting ? 'Exporting...' : 'Export CSV'}</span>
           </button>
         )}

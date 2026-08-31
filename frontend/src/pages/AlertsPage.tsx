@@ -12,6 +12,7 @@ import {
   Calendar,
   AlertCircle,
   BellOff,
+  Loader2,
 } from 'lucide-react';
 import { api } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.js';
@@ -491,7 +492,7 @@ export const AlertsPage: React.FC = () => {
                                   backgroundColor: '#fffbeb',
                                 }}
                               >
-                                <BellOff size={14} />
+                                {isDismissing ? <Loader2 size={14} className="animate-spin" /> : <BellOff size={14} />}
                                 <span>{isDismissing ? 'Dismissing...' : 'Dismiss'}</span>
                               </button>
                             </div>
