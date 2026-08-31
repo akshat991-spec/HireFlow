@@ -1,37 +1,121 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Briefcase, Users, Bell, UserSwitch, Check } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Briefcase,
+  Users,
+  Bell,
+  Check,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from 'lucide-react';
 import { useAuth, DEMO_ACCOUNTS } from '../../context/AuthContext.js';
 import { Role } from '../../types/index.js';
 
 interface SidebarProps {
   alertsCount?: number;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ alertsCount = 0 }) => {
+export const Sidebar: React.FC<SidebarProps> = ({
+  alertsCount = 0,
+  isCollapsed = false,
+  onToggleCollapse,
+}) => {
   const { currentUser, loginAs, loading } = useAuth();
   const [showSwitchDropdown, setShowSwitchDropdown] = useState(false);
 
   const initials = currentUser?.name
-    ? currentUser.name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase()
+    ? currentUser.name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .substring(0, 2)
+        .toUpperCase()
     : 'HF';
 
   const isRecruiter = currentUser?.role === Role.RECRUITER;
 
   return (
-    <aside className="sidebar">
-      <div className="brand">
-        <div className="brand-icon">HF</div>
-        <div className="brand-name">HireFlow</div>
+    <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
+      {/* Brand Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'space-between', width: '100%', paddingBottom: '1.25rem', borderBottom: '1px solid var(--border-color)' }}>
+        <NavLink
+          to="/dashboard"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.65rem',
+            textDecoration: 'none',
+            color: 'inherit',
+          }}
+          title="HireFlow — Return to Dashboard"
+        >
+          <div className="brand-icon">HF</div>
+          {!isCollapsed && (
+            <div className="brand-name">
+              Hire<span className="brand-accent">Flow</span>
+            </div>
+          )}
+        </NavLink>
+
+        {!isCollapsed && onToggleCollapse && (
+          <button
+            onClick={onToggleCollapse}
+            title="Collapse Sidebar"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              padding: '0.3rem',
+              display: 'flex',
+              alignItems: 'center',
+              borderRadius: 'var(--radius-sm)',
+              transition: 'all var(--transition-fast)',
+            }}
+            className="hover-bg"
+          >
+            <PanelLeftClose size={18} />
+          </button>
+        )}
       </div>
 
-      <nav>
+      {/* When collapsed, provide expand button right beneath brand */}
+      {isCollapsed && onToggleCollapse && (
+        <div style={{ marginTop: '0.75rem', width: '100%', display: 'flex', justifyContent: 'center' }}>
+          <button
+            onClick={onToggleCollapse}
+            title="Expand Sidebar"
+            style={{
+              background: 'none',
+              border: '1px solid var(--border-color)',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              padding: '0.35rem',
+              borderRadius: 'var(--radius-sm)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '36px',
+              height: '36px',
+            }}
+          >
+            <PanelLeftOpen size={16} />
+          </button>
+        </div>
+      )}
+
+      {/* Navigation links */}
+      <nav style={{ width: '100%' }}>
         <ul className="nav-menu">
           <li>
             <NavLink
               to="/dashboard"
               className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
               id="nav-dashboard"
+              title="Dashboard Overview"
             >
               <LayoutDashboard size={18} />
               <span>Dashboard</span>
@@ -42,6 +126,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ alertsCount = 0 }) => {
               to="/openings"
               className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
               id="nav-openings"
+              title="Job Openings"
             >
               <Briefcase size={18} />
               <span>Job Openings</span>
@@ -52,6 +137,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ alertsCount = 0 }) => {
               to="/candidates"
               className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
               id="nav-candidates"
+              title={isRecruiter ? 'Candidate Pipelines' : 'My Applications'}
             >
               <Users size={18} />
               <span>{isRecruiter ? 'Candidates' : 'My Applications'}</span>
@@ -62,6 +148,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ alertsCount = 0 }) => {
               to="/alerts"
               className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
               id="nav-alerts"
+              title="Stalled Candidate Alerts"
             >
               <Bell size={18} />
               <span>Stalled Alerts</span>
@@ -72,38 +159,42 @@ export const Sidebar: React.FC<SidebarProps> = ({ alertsCount = 0 }) => {
       </nav>
 
       {/* User profile & demo account switcher */}
-      <div style={{ position: 'relative', marginTop: 'auto' }}>
+      <div style={{ position: 'relative', marginTop: 'auto', width: '100%' }}>
         <div
           className="user-profile"
           id="user-profile-widget"
           onClick={() => setShowSwitchDropdown(!showSwitchDropdown)}
           style={{ cursor: 'pointer', position: 'relative' }}
-          title="Click to switch demo accounts / personas"
+          title={isCollapsed ? `${currentUser?.name} (${currentUser?.role}) — Click to switch persona` : 'Click to switch demo accounts / personas'}
         >
           <div
             className="user-avatar"
             id="user-avatar-initials"
             style={{
-              backgroundColor: isRecruiter ? 'var(--primary)' : 'var(--secondary)',
+              backgroundColor: isRecruiter ? '#eff6ff' : '#f0f9ff',
+              color: isRecruiter ? '#2563eb' : '#0284c7',
+              border: `1.5px solid ${isRecruiter ? '#bfdbfe' : '#bae6fd'}`,
             }}
           >
             {initials}
           </div>
-          <div className="user-info" style={{ flex: 1 }}>
-            <span className="user-name" id="user-display-name">
-              {currentUser?.name || 'Loading...'}
-            </span>
-            <span
-              className="user-role-badge"
-              id="user-display-role"
-              style={{
-                backgroundColor: isRecruiter ? 'rgba(79, 70, 229, 0.25)' : 'rgba(14, 165, 233, 0.25)',
-                color: isRecruiter ? 'var(--primary-light)' : 'var(--secondary)',
-              }}
-            >
-              {currentUser?.role || '...'}
-            </span>
-          </div>
+          {!isCollapsed && (
+            <div className="user-info" style={{ flex: 1 }}>
+              <span className="user-name" id="user-display-name">
+                {currentUser?.name || 'Loading...'}
+              </span>
+              <span
+                className="user-role-badge"
+                id="user-display-role"
+                style={{
+                  color: isRecruiter ? '#2563eb' : '#0284c7',
+                  fontWeight: 700,
+                }}
+              >
+                {currentUser?.role || '...'}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Switch Dropdown Menu */}
@@ -112,10 +203,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ alertsCount = 0 }) => {
             style={{
               position: 'absolute',
               bottom: '100%',
-              left: 0,
-              right: 0,
+              left: isCollapsed ? '100%' : 0,
+              right: isCollapsed ? 'auto' : 0,
+              marginLeft: isCollapsed ? '0.5rem' : 0,
               marginBottom: '0.5rem',
-              backgroundColor: 'var(--bg-card)',
+              backgroundColor: '#ffffff',
               border: '1px solid var(--border-color)',
               borderRadius: 'var(--radius-md)',
               boxShadow: 'var(--shadow-lg)',
@@ -124,6 +216,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ alertsCount = 0 }) => {
               display: 'flex',
               flexDirection: 'column',
               gap: '0.25rem',
+              minWidth: '220px',
             }}
           >
             <div
@@ -154,10 +247,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ alertsCount = 0 }) => {
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: '0.45rem 0.6rem',
-                    backgroundColor: active ? 'rgba(79, 70, 229, 0.2)' : 'transparent',
+                    backgroundColor: active ? '#eff6ff' : 'transparent',
                     border: 'none',
                     borderRadius: 'var(--radius-sm)',
-                    color: active ? 'var(--primary-light)' : 'var(--text-primary)',
+                    color: active ? '#0066ff' : 'var(--text-primary)',
                     cursor: 'pointer',
                     fontSize: '0.825rem',
                     textAlign: 'left',
@@ -168,7 +261,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ alertsCount = 0 }) => {
                     <div style={{ fontWeight: 600 }}>{acc.name}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{acc.badge}</div>
                   </div>
-                  {active && <Check size={16} color="var(--primary)" />}
+                  {active && <Check size={16} color="#0066ff" />}
                 </button>
               );
             })}

@@ -42,6 +42,8 @@
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.03);
   --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
 
+  --font-brand: 'Outfit', 'Plus Jakarta Sans', -apple-system, sans-serif;
+  --font-heading: 'Outfit', 'Plus Jakarta Sans', -apple-system, sans-serif;
   --font-serif: 'Playfair Display', Georgia, serif;
   --font-sans: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -88,6 +90,13 @@ body {
   height: 100vh;
   padding: 1.25rem 0.85rem;
   z-index: 20;
+  transition: width var(--transition-normal), padding var(--transition-normal);
+}
+
+.sidebar.collapsed {
+  width: 72px;
+  padding: 1.25rem 0.5rem;
+  align-items: center;
 }
 
 .brand {
@@ -96,29 +105,54 @@ body {
   gap: 0.65rem;
   padding: 0 0.5rem 1.25rem 0.5rem;
   border-bottom: 1px solid var(--border-color);
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.brand:hover {
+  opacity: 0.9;
+}
+
+.sidebar.collapsed .brand {
+  padding: 0 0 1.25rem 0;
+  justify-content: center;
+  width: 100%;
 }
 
 .brand-icon {
-  width: 34px;
-  height: 34px;
-  background: linear-gradient(135deg, #f59e0b, #d97706);
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #0066ff, #0284c7);
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 800;
   color: #ffffff;
-  font-family: var(--font-serif);
-  font-size: 1.1rem;
-  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
+  font-family: var(--font-brand);
+  font-size: 1.15rem;
+  letter-spacing: -0.03em;
+  box-shadow: 0 2px 8px rgba(0, 102, 255, 0.25);
+  flex-shrink: 0;
 }
 
 .brand-name {
-  font-family: var(--font-serif);
-  font-size: 1.4rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: #d97706;
+  font-family: var(--font-brand);
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+}
+
+.brand-name .brand-accent {
+  color: var(--primary);
+}
+
+.sidebar.collapsed .brand-name {
+  display: none;
 }
 
 .nav-menu {
@@ -128,6 +162,11 @@ body {
   flex-direction: column;
   gap: 0.35rem;
   flex: 1;
+}
+
+.sidebar.collapsed .nav-menu {
+  width: 100%;
+  align-items: center;
 }
 
 .nav-link {
@@ -140,8 +179,29 @@ body {
   font-size: 0.9rem;
   font-weight: 500;
   border-radius: var(--radius-sm);
-  border: 1px solid transparent;
   transition: all var(--transition-fast);
+  position: relative;
+}
+
+.sidebar.collapsed .nav-link {
+  justify-content: center;
+  padding: 0.65rem 0;
+  width: 44px;
+  height: 44px;
+}
+
+.sidebar.collapsed .nav-link span:not(.nav-badge) {
+  display: none;
+}
+
+.sidebar.collapsed .nav-link .nav-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  font-size: 0.65rem;
+  padding: 0 3px;
 }
 
 .nav-link:hover {
@@ -175,6 +235,15 @@ body {
   gap: 0.75rem;
 }
 
+.sidebar.collapsed .user-profile {
+  justify-content: center;
+  padding: 0.5rem 0 0 0;
+}
+
+.sidebar.collapsed .user-info {
+  display: none;
+}
+
 .user-avatar {
   width: 36px;
   height: 36px;
@@ -187,6 +256,7 @@ body {
   font-weight: 700;
   font-size: 0.85rem;
   color: var(--primary);
+  flex-shrink: 0;
 }
 
 .user-info {
@@ -217,6 +287,7 @@ body {
   flex-direction: column;
   min-width: 0;
   background-color: var(--bg-main);
+  transition: all var(--transition-normal);
 }
 
 /* Top Navbar Header */
@@ -239,12 +310,13 @@ body {
 
 /* Typography styles */
 .page-title {
-  font-family: var(--font-serif);
-  font-size: 2.2rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-family: var(--font-heading);
+  font-size: 1.95rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
   color: #0f172a;
   margin-bottom: 0.2rem;
+  line-height: 1.2;
 }
 
 .page-subtitle-tracked {

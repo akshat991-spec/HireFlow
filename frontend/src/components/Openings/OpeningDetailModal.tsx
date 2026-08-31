@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Briefcase, Users, Calendar, ArrowRight } from 'lucide-react';
+import { X, Briefcase, Users, Calendar, ArrowRight, Eye } from 'lucide-react';
 import { api } from '../../services/api.js';
 import { JobOpening, Stage, OpeningStatus, Application, Role } from '../../types/index.js';
 import { ApplicationFormModal } from '../Applications/ApplicationFormModal.js';

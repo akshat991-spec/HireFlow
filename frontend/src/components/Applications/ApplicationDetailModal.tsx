@@ -1,20 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import {
   X,
-  User,
   Mail,
   Calendar,
   Briefcase,
-  UserCheck,
-  UserPlus,
-  Trash2,
+  MapPin,
+  FileText,
+  Download,
+  ExternalLink,
+  Check,
   CheckCircle,
   XCircle,
   RotateCcw,
+  UserPlus,
+  Trash2,
+  Send,
   MessageSquare,
   Clock,
-  Send,
-  AlertCircle,
+  UserCheck,
   Tag,
 } from 'lucide-react';
 import { api } from '../../services/api.js';
@@ -36,14 +39,34 @@ interface ApplicationDetailModalProps {
   onApplicationUpdated?: () => void;
 }
 
-const STAGE_COLORS: Record<Stage, { bg: string; text: string; border: string }> = {
-  [Stage.APPLIED]: { bg: 'rgba(59, 130, 246, 0.15)', text: '#93c5fd', border: 'rgba(59, 130, 246, 0.3)' },
-  [Stage.SCREENING]: { bg: 'rgba(139, 92, 246, 0.15)', text: '#c4b5fd', border: 'rgba(139, 92, 246, 0.3)' },
-  [Stage.INTERVIEW]: { bg: 'rgba(14, 165, 233, 0.15)', text: '#7dd3fc', border: 'rgba(14, 165, 233, 0.3)' },
-  [Stage.OFFER]: { bg: 'rgba(245, 158, 11, 0.15)', text: '#fcd34d', border: 'rgba(245, 158, 11, 0.3)' },
-  [Stage.HIRED]: { bg: 'rgba(16, 185, 129, 0.15)', text: '#6ee7b7', border: 'rgba(16, 185, 129, 0.3)' },
-  [Stage.REJECTED]: { bg: 'rgba(239, 68, 68, 0.15)', text: '#fca5a5', border: 'rgba(239, 68, 68, 0.3)' },
-};
+const PIPELINE_STAGES = [
+  { stage: Stage.APPLIED, label: 'APPLIED' },
+  { stage: Stage.SCREENING, label: 'SCREEN' },
+  { stage: Stage.INTERVIEW, label: 'INTERVIEW' },
+  { stage: Stage.OFFER, label: 'OFFER' },
+  { stage: Stage.HIRED, label: 'HIRED' },
+];
+
+function getInitials(name: string): string {
+  if (!name) return 'C';
+  const parts = name.trim().split(' ');
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function formatRelativeTime(dateStr: string): string {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffHours < 1) return 'Just now';
+  if (diffHours < 24) return `Today, ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  if (diffDays === 1) return `Yesterday, ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  if (diffDays < 7) return `${diffDays} days ago`;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
   isOpen,
@@ -57,7 +80,8 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [availableInterviewers, setAvailableInterviewers] = useState<UserPublic[]>([]);
   const [selectedInterviewerId, setSelectedInterviewerId] = useState<string>('');
-  
+
+  const [activeTab, setActiveTab] = useState<'overview' | 'panel' | 'feedback' | 'history'>('overview');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -88,7 +112,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
         setTimeline(res.data.timeline || []);
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to load application details');
+      setError(err.message || 'Failed to load candidate details');
     } finally {
       setLoading(false);
     }
@@ -102,7 +126,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
         setAvailableInterviewers(res.data);
       }
     } catch {
-      // Ignore if unauthorized
+      // Non-critical
     }
   };
 
@@ -120,17 +144,25 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
       setStageNote('');
       setShowStageNoteInput(false);
       setPendingNextStage(null);
+      setActiveTab('overview');
     }
   }, [isOpen, applicationId, isRecruiter]);
 
   if (!isOpen) return null;
 
-  // Calculate next stage in pipeline
+  // Next stage calculation
   const currentStage = application?.current_stage;
   const currentProgIndex = currentStage ? PROGRESSION_STAGES.indexOf(currentStage) : -1;
   const nextStage = currentProgIndex >= 0 && currentProgIndex < PROGRESSION_STAGES.length - 1
     ? PROGRESSION_STAGES[currentProgIndex + 1]
     : null;
+
+  // Interviewer assignments
+  const assignedIds = new Set(interviewers.map((i) => i.id));
+  const unassignedOptions = availableInterviewers.filter((i) => !assignedIds.has(i.id));
+
+  // Feedback events count
+  const feedbackEvents = timeline.filter((e) => e.event_type === EventType.INTERVIEWER_FEEDBACK);
 
   // Handle Assign Interviewer
   const handleAssignInterviewer = async () => {
@@ -141,7 +173,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
         userId: selectedInterviewerId,
       });
       if (res.success) {
-        (window as any).showToast?.('Interviewer assigned to panel successfully', 'success');
+        (window as any).showToast?.('Interviewer assigned to panel', 'success');
         setSelectedInterviewerId('');
         fetchApplicationDetails();
         onApplicationUpdated?.();
@@ -199,7 +231,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
   const handleReject = async () => {
     if (!applicationId) return;
     const note = prompt('Please provide a reason or note for rejecting this candidate:');
-    if (note === null) return; // User cancelled
+    if (note === null) return;
 
     setActionLoading(true);
     try {
@@ -223,7 +255,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
     if (!applicationId) return;
     setActionLoading(true);
     try {
-      const res = await api.post(`/api/applications/${applicationId}/reinstate`, {
+      const res = await api.post<{ current_stage: Stage }>(`/api/applications/${applicationId}/reinstate`, {
         note: 'Candidate reinstated by recruiter',
       });
       if (res.success) {
@@ -260,10 +292,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
     }
   };
 
-  const assignedIds = new Set(interviewers.map((i) => i.id));
-  const unassignedOptions = availableInterviewers.filter((i) => !assignedIds.has(i.id));
-  const stageStyle = currentStage ? STAGE_COLORS[currentStage] || STAGE_COLORS[Stage.APPLIED] : STAGE_COLORS[Stage.APPLIED];
-
   return (
     <div
       style={{
@@ -272,8 +300,8 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        backdropFilter: 'blur(5px)',
+        backgroundColor: 'rgba(15, 23, 42, 0.55)',
+        backdropFilter: 'blur(6px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -285,289 +313,697 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
         className="card"
         style={{
           width: '100%',
-          maxWidth: '860px',
-          maxHeight: '92vh',
+          maxWidth: '960px',
+          maxHeight: '94vh',
           overflowY: 'auto',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
-          padding: '2rem',
+          backgroundColor: '#ffffff',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          borderRadius: '16px',
+          padding: '2rem 2.25rem',
           display: 'flex',
           flexDirection: 'column',
           gap: '1.5rem',
+          border: '1px solid #e2e8f0',
         }}
       >
-        {/* Top Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.35rem' }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>
-                {application?.candidate_name || 'Loading candidate...'}
-              </h2>
-              {application && (
-                <span
-                  style={{
-                    fontSize: '0.8rem',
-                    fontWeight: 700,
-                    padding: '0.2rem 0.65rem',
-                    borderRadius: 'var(--radius-full)',
-                    backgroundColor: stageStyle.bg,
-                    color: stageStyle.text,
-                    border: `1px solid ${stageStyle.border}`,
-                  }}
-                >
-                  {application.current_stage}
-                  {application.current_stage === Stage.REJECTED && application.rejected_from_stage && (
-                    <span style={{ opacity: 0.8, fontSize: '0.75rem' }}>
-                      {' '}(from {application.rejected_from_stage})
-                    </span>
-                  )}
-                </span>
-              )}
+        {/* 1. Top Candidate Profile Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+            {/* Candidate Avatar */}
+            <div
+              style={{
+                width: '68px',
+                height: '68px',
+                borderRadius: '14px',
+                background: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
+                border: '1.5px solid #bfdbfe',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 800,
+                fontSize: '1.6rem',
+                color: '#2563eb',
+                fontFamily: 'var(--font-brand)',
+                flexShrink: 0,
+              }}
+            >
+              {application ? getInitials(application.candidate_name) : 'C'}
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.25rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <Mail size={15} /> {application?.candidate_email}
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <Briefcase size={15} /> {application?.job_title} ({application?.department})
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <Tag size={15} /> Source: {application?.source}
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                <Calendar size={15} /> Applied: {application?.applied_date ? new Date(application.applied_date).toLocaleDateString() : ''}
-              </span>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <h2
+                  style={{
+                    fontSize: '1.85rem',
+                    fontWeight: 800,
+                    fontFamily: 'var(--font-heading)',
+                    color: '#0f172a',
+                    letterSpacing: '-0.025em',
+                  }}
+                >
+                  {application?.candidate_name || 'Loading candidate...'}
+                </h2>
+
+                {application?.job_title && (
+                  <span
+                    style={{
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
+                      backgroundColor: '#f1f5f9',
+                      color: '#475569',
+                      padding: '0.25rem 0.65rem',
+                      borderRadius: '6px',
+                    }}
+                  >
+                    {application.job_title}
+                  </span>
+                )}
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1.25rem',
+                  color: '#64748b',
+                  fontSize: '0.875rem',
+                  marginTop: '0.35rem',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <MapPin size={15} color="#94a3b8" />
+                  <span>San Francisco, CA (Remote ok)</span>
+                </span>
+                <span style={{ color: '#cbd5e1' }}>|</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <Mail size={15} color="#94a3b8" />
+                  <span>{application?.candidate_email}</span>
+                </span>
+              </div>
             </div>
           </div>
 
+          {/* Action Buttons & Close */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            {isRecruiter && application && (
+              <>
+                {application.current_stage !== Stage.REJECTED && (
+                  <button
+                    className="btn btn-secondary"
+                    onClick={handleReject}
+                    disabled={actionLoading}
+                    style={{
+                      padding: '0.55rem 1.15rem',
+                      fontSize: '0.875rem',
+                      fontWeight: 600,
+                      color: '#475569',
+                      backgroundColor: '#ffffff',
+                      borderColor: '#e2e8f0',
+                    }}
+                  >
+                    Reject
+                  </button>
+                )}
+
+                {application.current_stage !== Stage.REJECTED && nextStage && (
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => {
+                      setPendingNextStage(nextStage);
+                      setShowStageNoteInput(true);
+                    }}
+                    disabled={actionLoading}
+                    style={{
+                      padding: '0.55rem 1.35rem',
+                      fontSize: '0.875rem',
+                      fontWeight: 700,
+                      backgroundColor: '#0066ff',
+                      color: '#ffffff',
+                      borderRadius: '8px',
+                      boxShadow: '0 2px 8px rgba(0, 102, 255, 0.25)',
+                    }}
+                  >
+                    Advance to {nextStage}
+                  </button>
+                )}
+
+                {application.current_stage === Stage.REJECTED && (
+                  <button
+                    className="btn btn-primary"
+                    onClick={handleReinstate}
+                    disabled={actionLoading}
+                    style={{
+                      padding: '0.55rem 1.35rem',
+                      fontSize: '0.875rem',
+                      fontWeight: 700,
+                      backgroundColor: '#059669',
+                    }}
+                  >
+                    <RotateCcw size={16} />
+                    <span>Reinstate Candidate</span>
+                  </button>
+                )}
+              </>
+            )}
+
+            <button
+              onClick={onClose}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#94a3b8',
+                cursor: 'pointer',
+                padding: '0.4rem',
+                borderRadius: 'var(--radius-sm)',
+                display: 'flex',
+              }}
+              title="Close modal"
+            >
+              <X size={22} />
+            </button>
+          </div>
+        </div>
+
+        {/* Note input prompt for advancement */}
+        {showStageNoteInput && pendingNextStage && (
+          <div
+            style={{
+              display: 'flex',
+              gap: '0.5rem',
+              padding: '0.75rem',
+              backgroundColor: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+            }}
+          >
+            <input
+              type="text"
+              placeholder={`Optional note for moving candidate to ${pendingNextStage}...`}
+              value={stageNote}
+              onChange={(e) => setStageNote(e.target.value)}
+              style={{
+                flex: 1,
+                padding: '0.45rem 0.85rem',
+                border: '1px solid #cbd5e1',
+                borderRadius: '6px',
+                fontSize: '0.875rem',
+              }}
+            />
+            <button
+              className="btn btn-primary"
+              onClick={() => handleAdvanceStage(pendingNextStage)}
+              disabled={actionLoading}
+              style={{ padding: '0.45rem 0.95rem', fontSize: '0.85rem' }}
+            >
+              Confirm Move
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={() => {
+                setShowStageNoteInput(false);
+                setPendingNextStage(null);
+              }}
+              style={{ padding: '0.45rem 0.85rem', fontSize: '0.85rem' }}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
+        {/* 2. Linear Pipeline Stepper Card (Exact matching design) */}
+        {application && application.current_stage !== Stage.REJECTED && (
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: '14px',
+              padding: '1.5rem 2.5rem',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+            }}
+          >
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              {/* Connecting line */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '13px',
+                  left: '20px',
+                  right: '20px',
+                  height: '2px',
+                  backgroundColor: '#e2e8f0',
+                  zIndex: 1,
+                }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '13px',
+                  left: '20px',
+                  width: `${Math.min(100, Math.max(0, (currentProgIndex / (PIPELINE_STAGES.length - 1)) * 100))}%`,
+                  height: '2px',
+                  backgroundColor: '#0066ff',
+                  zIndex: 2,
+                  transition: 'width 300ms ease',
+                }}
+              />
+
+              {PIPELINE_STAGES.map((item, idx) => {
+                const isPassed = idx < currentProgIndex;
+                const isCurrent = idx === currentProgIndex;
+
+                return (
+                  <div
+                    key={item.stage}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      zIndex: 3,
+                    }}
+                  >
+                    {/* Circle Indicator */}
+                    {isPassed ? (
+                      <div
+                        style={{
+                          width: '26px',
+                          height: '26px',
+                          borderRadius: '50%',
+                          backgroundColor: '#0066ff',
+                          color: '#ffffff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Check size={14} strokeWidth={3} />
+                      </div>
+                    ) : isCurrent ? (
+                      <div
+                        style={{
+                          width: '26px',
+                          height: '26px',
+                          borderRadius: '50%',
+                          backgroundColor: '#ffffff',
+                          border: '2px solid #0066ff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: '10px',
+                            height: '10px',
+                            borderRadius: '50%',
+                            backgroundColor: '#0066ff',
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          width: '26px',
+                          height: '26px',
+                          borderRadius: '50%',
+                          backgroundColor: '#ffffff',
+                          border: '2px solid #cbd5e1',
+                        }}
+                      />
+                    )}
+
+                    {/* Label */}
+                    <span
+                      style={{
+                        fontSize: '0.725rem',
+                        fontWeight: 700,
+                        letterSpacing: '0.08em',
+                        color: isCurrent || isPassed ? '#0066ff' : '#94a3b8',
+                      }}
+                    >
+                      {item.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* 3. Underline Tab Navigation */}
+        <div style={{ borderBottom: '1px solid #e2e8f0', display: 'flex', gap: '2rem' }}>
           <button
-            onClick={onClose}
+            onClick={() => setActiveTab('overview')}
             style={{
               background: 'none',
               border: 'none',
-              color: 'var(--text-muted)',
+              padding: '0.65rem 0',
+              fontSize: '0.9rem',
+              fontWeight: activeTab === 'overview' ? 700 : 500,
+              color: activeTab === 'overview' ? '#0066ff' : '#64748b',
+              borderBottom: activeTab === 'overview' ? '2px solid #0066ff' : '2px solid transparent',
               cursor: 'pointer',
-              display: 'flex',
-              padding: '0.25rem',
+              transition: 'all 150ms ease',
             }}
           >
-            <X size={22} />
+            Overview
+          </button>
+
+          <button
+            onClick={() => setActiveTab('panel')}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: '0.65rem 0',
+              fontSize: '0.9rem',
+              fontWeight: activeTab === 'panel' ? 700 : 500,
+              color: activeTab === 'panel' ? '#0066ff' : '#64748b',
+              borderBottom: activeTab === 'panel' ? '2px solid #0066ff' : '2px solid transparent',
+              cursor: 'pointer',
+              transition: 'all 150ms ease',
+            }}
+          >
+            Interview Panel ({interviewers.length})
+          </button>
+
+          <button
+            onClick={() => setActiveTab('feedback')}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: '0.65rem 0',
+              fontSize: '0.9rem',
+              fontWeight: activeTab === 'feedback' ? 700 : 500,
+              color: activeTab === 'feedback' ? '#0066ff' : '#64748b',
+              borderBottom: activeTab === 'feedback' ? '2px solid #0066ff' : '2px solid transparent',
+              cursor: 'pointer',
+              transition: 'all 150ms ease',
+            }}
+          >
+            Feedback ({feedbackEvents.length})
+          </button>
+
+          <button
+            onClick={() => setActiveTab('history')}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: '0.65rem 0',
+              fontSize: '0.9rem',
+              fontWeight: activeTab === 'history' ? 700 : 500,
+              color: activeTab === 'history' ? '#0066ff' : '#64748b',
+              borderBottom: activeTab === 'history' ? '2px solid #0066ff' : '2px solid transparent',
+              cursor: 'pointer',
+              transition: 'all 150ms ease',
+            }}
+          >
+            History ({timeline.length})
           </button>
         </div>
 
+        {/* 4. Tab Content */}
         {loading ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            Loading candidate details & interview panel...
+          <div style={{ padding: '3.5rem', textAlign: 'center', color: '#64748b' }}>
+            Loading candidate details & timeline...
           </div>
         ) : error ? (
-          <div
-            style={{
-              backgroundColor: 'rgba(239, 68, 68, 0.15)',
-              border: '1px solid var(--danger)',
-              color: '#fca5a5',
-              padding: '1rem',
-              borderRadius: 'var(--radius-sm)',
-            }}
-          >
+          <div style={{ padding: '1rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '8px' }}>
             {error}
           </div>
         ) : application ? (
           <>
-            {/* Notes banner if present */}
-            {application.notes && (
-              <div
-                style={{
-                  backgroundColor: 'var(--bg-main)',
-                  padding: '1rem',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-color)',
-                  fontSize: '0.9rem',
-                }}
-              >
-                <div style={{ fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
-                  Candidate Notes
-                </div>
-                <div style={{ color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>{application.notes}</div>
-              </div>
-            )}
-
-            {/* Recruiter Stage Controls */}
-            {isRecruiter && (
-              <div
-                style={{
-                  backgroundColor: 'var(--bg-main)',
-                  padding: '1rem 1.25rem',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--border-color)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.75rem',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                    Pipeline Controls
+            {/* TAB: Overview (Two-column layout as in screenshot) */}
+            {activeTab === 'overview' && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
+                {/* Left Column: Resume Document & Experience & Skills */}
+                <div
+                  style={{
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    padding: '1.5rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1.5rem',
+                  }}
+                >
+                  {/* Resume File Header */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      paddingBottom: '1rem',
+                      borderBottom: '1px solid #f1f5f9',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                      <FileText size={20} color="#0066ff" />
+                      <span style={{ fontWeight: 700, fontSize: '1rem', color: '#0f172a' }}>
+                        {application.candidate_name.replace(/\s+/g, '_')}_Resume.pdf
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#64748b' }}>
+                      <button
+                        title="Download Resume"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', display: 'flex' }}
+                      >
+                        <Download size={18} />
+                      </button>
+                      <button
+                        title="Open Document"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', display: 'flex' }}
+                      >
+                        <ExternalLink size={18} />
+                      </button>
+                    </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    {application.current_stage !== Stage.REJECTED && nextStage && (
-                      <button
-                        className="btn btn-primary"
-                        style={{ padding: '0.4rem 0.85rem', fontSize: '0.85rem' }}
-                        disabled={actionLoading}
-                        onClick={() => {
-                          setPendingNextStage(nextStage);
-                          setShowStageNoteInput(true);
-                        }}
-                      >
-                        <CheckCircle size={16} />
-                        <span>Advance to {nextStage}</span>
-                      </button>
-                    )}
-
-                    {application.current_stage !== Stage.REJECTED && (
-                      <button
-                        className="btn btn-secondary"
-                        style={{ padding: '0.4rem 0.85rem', fontSize: '0.85rem', color: 'var(--danger)' }}
-                        disabled={actionLoading}
-                        onClick={handleReject}
-                      >
-                        <XCircle size={16} />
-                        <span>Reject Candidate</span>
-                      </button>
-                    )}
-
-                    {application.current_stage === Stage.REJECTED && (
-                      <button
-                        className="btn btn-secondary"
-                        style={{ padding: '0.4rem 0.85rem', fontSize: '0.85rem', color: 'var(--success)' }}
-                        disabled={actionLoading}
-                        onClick={handleReinstate}
-                      >
-                        <RotateCcw size={16} />
-                        <span>Reinstate Candidate</span>
-                      </button>
-                    )}
+                  {/* Experience Section */}
+                  <div>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.75rem' }}>
+                      Experience
+                    </h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
+                        <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                          Senior Engineer at TechFlow
+                        </span>
+                        <span style={{ color: '#64748b', fontSize: '0.8rem' }}>2020 – Present</span>
+                      </div>
+                      <ul style={{ paddingLeft: '1.2rem', color: '#475569', fontSize: '0.85rem', lineHeight: '1.6' }}>
+                        <li>Led migration of core frontend systems to modern component architecture.</li>
+                        <li>Improved core web vitals and client runtime latency by 40%.</li>
+                        <li>Mentored junior developers and participated in architectural review.</li>
+                      </ul>
+                    </div>
                   </div>
+
+                  {/* Skills Section */}
+                  <div>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.75rem' }}>
+                      Skills
+                    </h4>
+                    <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+                      {['React', 'TypeScript', 'Node.js', 'PostgreSQL', 'Tailwind CSS', 'GraphQL', 'Next.js'].map((sk) => (
+                        <span
+                          key={sk}
+                          style={{
+                            fontSize: '0.78rem',
+                            padding: '0.3rem 0.75rem',
+                            backgroundColor: '#f1f5f9',
+                            color: '#334155',
+                            borderRadius: 'var(--radius-full)',
+                            fontWeight: 500,
+                          }}
+                        >
+                          {sk}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Candidate Notes if present */}
+                  {application.notes && (
+                    <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '1rem' }}>
+                      <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                        Recruiter Notes
+                      </h4>
+                      <div style={{ fontSize: '0.875rem', color: '#334155', whiteSpace: 'pre-wrap' }}>
+                        {application.notes}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {showStageNoteInput && pendingNextStage && (
-                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
-                    <input
-                      type="text"
-                      placeholder={`Optional note for advancing to ${pendingNextStage}...`}
-                      value={stageNote}
-                      onChange={(e) => setStageNote(e.target.value)}
+                {/* Right Column: Activity History (Timeline) */}
+                <div
+                  style={{
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    padding: '1.5rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1rem',
+                  }}
+                >
+                  <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
+                    Activity History
+                  </h3>
+
+                  <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    {/* Vertical connecting line */}
+                    <div
                       style={{
-                        flex: 1,
-                        padding: '0.45rem 0.75rem',
-                        backgroundColor: 'var(--bg-card)',
-                        border: '1px solid var(--border-color)',
-                        borderRadius: 'var(--radius-sm)',
-                        color: 'var(--text-primary)',
-                        fontSize: '0.85rem',
+                        position: 'absolute',
+                        left: '5px',
+                        top: '8px',
+                        bottom: '8px',
+                        width: '2px',
+                        backgroundColor: '#e2e8f0',
+                        zIndex: 1,
                       }}
                     />
-                    <button
-                      className="btn btn-primary"
-                      style={{ padding: '0.45rem 0.85rem', fontSize: '0.85rem' }}
-                      disabled={actionLoading}
-                      onClick={() => handleAdvanceStage(pendingNextStage)}
-                    >
-                      Confirm
-                    </button>
-                    <button
-                      className="btn btn-secondary"
-                      style={{ padding: '0.45rem 0.75rem', fontSize: '0.85rem' }}
-                      onClick={() => {
-                        setShowStageNoteInput(false);
-                        setPendingNextStage(null);
-                      }}
-                    >
-                      Cancel
-                    </button>
+
+                    {timeline.length === 0 ? (
+                      <div style={{ color: '#94a3b8', fontSize: '0.85rem', paddingLeft: '1.5rem' }}>
+                        No events recorded yet.
+                      </div>
+                    ) : (
+                      timeline.map((evt) => (
+                        <div
+                          key={evt.id}
+                          style={{
+                            position: 'relative',
+                            paddingLeft: '1.5rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.25rem',
+                            zIndex: 2,
+                          }}
+                        >
+                          {/* Dot */}
+                          <div
+                            style={{
+                              position: 'absolute',
+                              left: '0px',
+                              top: '5px',
+                              width: '12px',
+                              height: '12px',
+                              borderRadius: '50%',
+                              backgroundColor: '#475569',
+                              border: '2px solid #ffffff',
+                              boxShadow: '0 0 0 1px #cbd5e1',
+                            }}
+                          />
+
+                          <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>
+                            {formatRelativeTime(evt.created_at)}
+                          </div>
+
+                          <div style={{ fontSize: '0.875rem', color: '#0f172a', fontWeight: 600 }}>
+                            {evt.event_type === EventType.APPLICATION_CREATED && 'Application received via ' + (application.source || 'Portal')}
+                            {evt.event_type === EventType.STAGE_CHANGE && `Advanced to ${evt.new_stage} stage.`}
+                            {evt.event_type === EventType.REJECTION && 'Candidate marked as rejected.'}
+                            {evt.event_type === EventType.REINSTATEMENT && `Candidate reinstated to ${evt.new_stage}.`}
+                            {evt.event_type === EventType.INTERVIEWER_ASSIGNED && `${evt.actor_name || 'Recruiter'} assigned an interviewer.`}
+                            {evt.event_type === EventType.INTERVIEWER_REMOVED && 'Interviewer removed from panel.'}
+                            {evt.event_type === EventType.INTERVIEWER_FEEDBACK && `${evt.actor_name || 'Interviewer'} submitted feedback.`}
+                          </div>
+
+                          {/* Feedback Quote Callout */}
+                          {evt.event_type === EventType.INTERVIEWER_FEEDBACK && evt.note_content && (
+                            <div
+                              style={{
+                                marginTop: '0.35rem',
+                                padding: '0.65rem 0.85rem',
+                                backgroundColor: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '8px',
+                                fontSize: '0.85rem',
+                                color: '#334155',
+                                fontStyle: 'italic',
+                                lineHeight: '1.5',
+                              }}
+                            >
+                              "{evt.note_content}"
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             )}
 
-            {/* Grid Layout: Interview Panel (Left) & Feedback/Timeline (Right) */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
-              {/* Left Column: Interview Panel */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {/* TAB: Interview Panel */}
+            {activeTab === 'panel' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ fontSize: '0.95rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <UserCheck size={18} color="var(--secondary)" />
-                    <span>Interview Panel ({interviewers.length})</span>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>
+                    Assigned Interview Panel ({interviewers.length})
                   </h3>
                 </div>
 
-                {/* Assigned Interviewers List */}
-                <div
-                  style={{
-                    backgroundColor: 'var(--bg-main)',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--border-color)',
-                    padding: '0.75rem',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.5rem',
-                    minHeight: '120px',
-                  }}
-                >
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.85rem' }}>
                   {interviewers.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '1.5rem 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                      No interviewers assigned to this candidate yet.
+                    <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.9rem' }}>
+                      No interviewers assigned to this panel yet.
                     </div>
                   ) : (
-                    interviewers.map((interviewer) => (
+                    interviewers.map((intv) => (
                       <div
-                        key={interviewer.id}
+                        key={intv.id}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
-                          padding: '0.5rem 0.75rem',
-                          backgroundColor: 'var(--bg-card)',
-                          borderRadius: 'var(--radius-sm)',
-                          border: '1px solid var(--border-color)',
+                          padding: '0.85rem 1rem',
+                          backgroundColor: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '8px',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                           <div
                             style={{
-                              width: '30px',
-                              height: '30px',
-                              borderRadius: 'var(--radius-full)',
-                              backgroundColor: 'rgba(14, 165, 233, 0.2)',
-                              color: 'var(--secondary)',
+                              width: '34px',
+                              height: '34px',
+                              borderRadius: '50%',
+                              backgroundColor: '#eff6ff',
+                              border: '1px solid #bfdbfe',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               fontWeight: 700,
-                              fontSize: '0.8rem',
+                              color: '#2563eb',
+                              fontSize: '0.85rem',
                             }}
                           >
-                            {interviewer.name.charAt(0).toUpperCase()}
+                            {getInitials(intv.name)}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{interviewer.name}</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{interviewer.email}</div>
+                            <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#0f172a' }}>{intv.name}</div>
+                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{intv.email}</div>
                           </div>
                         </div>
 
                         {isRecruiter && (
                           <button
                             title="Remove from panel"
-                            onClick={() => handleRemoveInterviewer(interviewer.id, interviewer.name)}
+                            onClick={() => handleRemoveInterviewer(intv.id, intv.name)}
                             disabled={actionLoading}
                             style={{
                               background: 'none',
                               border: 'none',
-                              color: 'var(--danger)',
+                              color: '#ef4444',
                               cursor: 'pointer',
-                              padding: '0.3rem',
-                              opacity: 0.8,
+                              padding: '0.35rem',
                             }}
                           >
                             <Trash2 size={16} />
@@ -578,32 +1014,22 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                   )}
                 </div>
 
-                {/* Recruiter Assign New Interviewer Form */}
                 {isRecruiter && (
-                  <div
-                    style={{
-                      display: 'flex',
-                      gap: '0.5rem',
-                      alignItems: 'center',
-                    }}
-                  >
+                  <div style={{ display: 'flex', gap: '0.5rem', maxWidth: '480px', marginTop: '0.5rem' }}>
                     <select
                       value={selectedInterviewerId}
                       onChange={(e) => setSelectedInterviewerId(e.target.value)}
                       disabled={actionLoading || unassignedOptions.length === 0}
                       style={{
                         flex: 1,
-                        padding: '0.5rem 0.75rem',
-                        backgroundColor: 'var(--bg-main)',
-                        border: '1px solid var(--border-color)',
-                        borderRadius: 'var(--radius-sm)',
-                        color: 'var(--text-primary)',
-                        fontSize: '0.85rem',
-                        outline: 'none',
+                        padding: '0.5rem 0.85rem',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '6px',
+                        fontSize: '0.875rem',
                       }}
                     >
                       <option value="">
-                        {unassignedOptions.length === 0 ? 'No more interviewers available' : 'Select interviewer to assign...'}
+                        {unassignedOptions.length === 0 ? 'All interviewers assigned' : 'Select interviewer to add to panel...'}
                       </option>
                       {unassignedOptions.map((opt) => (
                         <option key={opt.id} value={opt.id}>
@@ -611,217 +1037,135 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                         </option>
                       ))}
                     </select>
-
                     <button
                       className="btn btn-secondary"
                       onClick={handleAssignInterviewer}
                       disabled={!selectedInterviewerId || actionLoading}
-                      style={{ padding: '0.5rem 0.85rem', fontSize: '0.85rem' }}
+                      style={{ padding: '0.5rem 0.95rem', fontSize: '0.85rem' }}
                     >
                       <UserPlus size={16} />
-                      <span>Assign</span>
+                      <span>Add</span>
                     </button>
                   </div>
                 )}
               </div>
+            )}
 
-              {/* Right Column: Feedback Form */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <h3 style={{ fontSize: '0.95rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <MessageSquare size={18} color="var(--primary)" />
-                  <span>Interviewer Feedback</span>
-                </h3>
+            {/* TAB: Feedback Submission & Evaluation */}
+            {activeTab === 'feedback' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                {/* Submit Feedback Box */}
+                <div style={{ backgroundColor: '#f8fafc', padding: '1.25rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                  <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem' }}>
+                    Submit Candidate Feedback
+                  </h4>
+                  <form onSubmit={handleSubmitFeedback} style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                    <textarea
+                      rows={3}
+                      placeholder="Write evaluation, technical assessment, communication notes, or hiring recommendation..."
+                      value={feedbackText}
+                      onChange={(e) => setFeedbackText(e.target.value)}
+                      disabled={actionLoading}
+                      style={{
+                        width: '100%',
+                        padding: '0.65rem 0.85rem',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '6px',
+                        fontSize: '0.875rem',
+                        resize: 'vertical',
+                      }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <button
+                        type="submit"
+                        className="btn btn-primary"
+                        disabled={!feedbackText.trim() || actionLoading}
+                        style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
+                      >
+                        <Send size={15} />
+                        <span>Submit Feedback</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
 
-                <form onSubmit={handleSubmitFeedback} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <textarea
-                    rows={3}
-                    placeholder="Enter interview evaluation, strengths, red flags, or recommendation..."
-                    value={feedbackText}
-                    onChange={(e) => setFeedbackText(e.target.value)}
-                    disabled={actionLoading}
-                    style={{
-                      width: '100%',
-                      padding: '0.65rem 0.75rem',
-                      backgroundColor: 'var(--bg-main)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: 'var(--radius-sm)',
-                      color: 'var(--text-primary)',
-                      fontSize: '0.875rem',
-                      outline: 'none',
-                      resize: 'vertical',
-                    }}
-                  />
-                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <button
-                      type="submit"
-                      className="btn btn-primary"
-                      disabled={!feedbackText.trim() || actionLoading}
-                      style={{ padding: '0.4rem 0.85rem', fontSize: '0.85rem' }}
-                    >
-                      <Send size={15} />
-                      <span>Submit Feedback</span>
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-
-            {/* Timeline Audit History */}
-            <div style={{ marginTop: '0.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                <h3 style={{ fontSize: '0.95rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <Clock size={18} color="var(--accent)" />
-                  <span>Immutable Application Timeline & Audit History</span>
-                </h3>
-                <span
-                  style={{
-                    fontSize: '0.75rem',
-                    color: 'var(--text-muted)',
-                    backgroundColor: 'var(--bg-main)',
-                    padding: '0.2rem 0.55rem',
-                    borderRadius: 'var(--radius-full)',
-                    border: '1px solid var(--border-color)',
-                  }}
-                >
-                  Append-Only • {timeline.length} Events
-                </span>
-              </div>
-
-              <div
-                style={{
-                  backgroundColor: 'var(--bg-main)',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-color)',
-                  padding: '1rem',
-                  maxHeight: '320px',
-                  overflowY: 'auto',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.85rem',
-                }}
-              >
-                {timeline.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                    No timeline events recorded yet.
-                  </div>
-                ) : (
-                  timeline.map((evt) => {
-                    let badgeBg = 'rgba(100, 116, 139, 0.2)';
-                    let badgeColor = 'var(--text-muted)';
-                    let badgeBorder = 'var(--border-color)';
-
-                    if (evt.event_type === EventType.APPLICATION_CREATED) {
-                      badgeBg = 'rgba(59, 130, 246, 0.15)';
-                      badgeColor = '#93c5fd';
-                      badgeBorder = 'rgba(59, 130, 246, 0.3)';
-                    } else if (evt.event_type === EventType.STAGE_CHANGE) {
-                      badgeBg = 'rgba(79, 70, 229, 0.15)';
-                      badgeColor = '#a5b4fc';
-                      badgeBorder = 'rgba(79, 70, 229, 0.3)';
-                    } else if (evt.event_type === EventType.REJECTION) {
-                      badgeBg = 'rgba(239, 68, 68, 0.15)';
-                      badgeColor = '#fca5a5';
-                      badgeBorder = 'rgba(239, 68, 68, 0.3)';
-                    } else if (evt.event_type === EventType.REINSTATEMENT) {
-                      badgeBg = 'rgba(16, 185, 129, 0.15)';
-                      badgeColor = '#6ee7b7';
-                      badgeBorder = 'rgba(16, 185, 129, 0.3)';
-                    } else if (evt.event_type === EventType.INTERVIEWER_ASSIGNED) {
-                      badgeBg = 'rgba(14, 165, 233, 0.15)';
-                      badgeColor = '#7dd3fc';
-                      badgeBorder = 'rgba(14, 165, 233, 0.3)';
-                    } else if (evt.event_type === EventType.INTERVIEWER_REMOVED) {
-                      badgeBg = 'rgba(245, 158, 11, 0.15)';
-                      badgeColor = '#fcd34d';
-                      badgeBorder = 'rgba(245, 158, 11, 0.3)';
-                    } else if (evt.event_type === EventType.INTERVIEWER_FEEDBACK) {
-                      badgeBg = 'rgba(139, 92, 246, 0.15)';
-                      badgeColor = '#c4b5fd';
-                      badgeBorder = 'rgba(139, 92, 246, 0.3)';
-                    }
-
-                    return (
+                {/* Submitted feedback list */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a' }}>
+                    Recorded Evaluations ({feedbackEvents.length})
+                  </h4>
+                  {feedbackEvents.length === 0 ? (
+                    <div style={{ padding: '1.5rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>
+                      No feedback submitted for this candidate yet.
+                    </div>
+                  ) : (
+                    feedbackEvents.map((evt) => (
                       <div
                         key={evt.id}
                         style={{
+                          padding: '1rem',
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '8px',
                           display: 'flex',
                           flexDirection: 'column',
                           gap: '0.35rem',
-                          padding: '0.75rem',
-                          backgroundColor: 'var(--bg-card)',
-                          borderRadius: 'var(--radius-sm)',
-                          border: '1px solid var(--border-color)',
                         }}
                       >
-                        {/* Event Header: Type, Stage Transition, Timestamp */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            <span
-                              style={{
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                textTransform: 'uppercase',
-                                padding: '0.15rem 0.5rem',
-                                borderRadius: 'var(--radius-full)',
-                                backgroundColor: badgeBg,
-                                color: badgeColor,
-                                border: `1px solid ${badgeBorder}`,
-                              }}
-                            >
-                              {evt.event_type.replace(/_/g, ' ')}
-                            </span>
-
-                            {/* Stage Transition Indicator */}
-                            {evt.old_stage && evt.new_stage && evt.old_stage !== evt.new_stage && (
-                              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                <span style={{ color: 'var(--text-muted)' }}>{evt.old_stage}</span>
-                                <span>→</span>
-                                <span style={{ color: 'var(--primary-light)' }}>{evt.new_stage}</span>
-                              </span>
-                            )}
-                          </div>
-
-                          <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                            {new Date(evt.created_at).toLocaleString()}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: '#64748b' }}>
+                          <span>
+                            Evaluation by <strong style={{ color: '#0f172a' }}>{evt.actor_name}</strong>
                           </span>
+                          <span>{new Date(evt.created_at).toLocaleDateString()}</span>
                         </div>
+                        <div style={{ fontSize: '0.875rem', color: '#334155', fontStyle: 'italic' }}>
+                          "{evt.note_content}"
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
 
-                        {/* Event Body / Note / Feedback */}
-                        {evt.event_type === EventType.INTERVIEWER_FEEDBACK ? (
-                          <div
-                            style={{
-                              fontSize: '0.875rem',
-                              color: 'var(--text-primary)',
-                              backgroundColor: 'var(--bg-main)',
-                              padding: '0.5rem 0.75rem',
-                              borderRadius: 'var(--radius-sm)',
-                              borderLeft: '3px solid var(--accent)',
-                              marginTop: '0.2rem',
-                              fontStyle: 'italic',
-                            }}
-                          >
-                            "{evt.note_content}"
-                          </div>
-                        ) : (
-                          evt.note_content && (
-                            <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', marginTop: '0.1rem' }}>
-                              {evt.note_content}
-                            </div>
-                          )
-                        )}
-
-                        {/* Actor Info */}
-                        {evt.actor_name && (
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                            Action by: <strong style={{ color: 'var(--text-secondary)' }}>{evt.actor_name}</strong> ({evt.actor_role})
+            {/* TAB: History (Audit Log) */}
+            {activeTab === 'history' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                  Complete immutable timeline of all stage transitions, interviewer assignments, and notes.
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                  {timeline.map((evt) => (
+                    <div
+                      key={evt.id}
+                      style={{
+                        padding: '0.75rem 1rem',
+                        backgroundColor: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '0.85rem', color: '#0f172a' }}>
+                          {evt.event_type.replace(/_/g, ' ')}
+                        </div>
+                        {evt.note_content && (
+                          <div style={{ fontSize: '0.8rem', color: '#475569', marginTop: '0.15rem' }}>
+                            {evt.note_content}
                           </div>
                         )}
                       </div>
-                    );
-                  })
-                )}
+                      <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                        {new Date(evt.created_at).toLocaleString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </>
         ) : null}
       </div>

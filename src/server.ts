@@ -1,6 +1,6 @@
 import { createApp } from './app.js';
 import { config } from './config.js';
-import { checkDbHealth, closePool, initInMemoryDb } from './db/index.js';
+import { checkDbHealth, closePool, initInMemoryDb, bootstrapRealDb } from './db/index.js';
 
 const app = createApp();
 
@@ -11,6 +11,12 @@ const server = app.listen(config.port, async () => {
   const dbHealth = await checkDbHealth();
   if (dbHealth.status === 'connected') {
     console.log('✅ PostgreSQL database connection established.');
+    try {
+      await bootstrapRealDb();
+      console.log('✅ Database schema verified & demo pipeline seeded.');
+    } catch (bootErr) {
+      console.error('Error bootstrapping database tables:', bootErr);
+    }
   } else {
     console.warn(`⚠️ PostgreSQL connection not established: ${dbHealth.error || 'Connection refused'}`);
     console.log('🚀 Initializing in-memory PostgreSQL instance with full schema & demo seeds...');

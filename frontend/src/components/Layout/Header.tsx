@@ -1,119 +1,102 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Search, Bell } from 'lucide-react';
+import { Search, Bell, Shield, Sparkles } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.js';
 import { Role } from '../../types/index.js';
 
 interface HeaderProps {
   onAddCandidate?: () => void;
   alertsCount?: number;
+  onToggleSidebar?: () => void;
+  isSidebarCollapsed?: boolean;
 }
 
-export const Header: React.FC<HeaderProps> = ({ alertsCount = 0 }) => {
+export const Header: React.FC<HeaderProps> = ({
+  alertsCount = 0,
+}) => {
   const { currentUser } = useAuth();
   const isRecruiter = currentUser?.role === Role.RECRUITER;
 
   const initials = currentUser?.name
-    ? currentUser.name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase()
+    ? currentUser.name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .substring(0, 2)
+        .toUpperCase()
     : 'HF';
 
   return (
-    <header className="top-bar" style={{ gap: '2rem' }}>
-      {/* Brand Logo */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <span
+    <header className="top-bar">
+      {/* Workspace Context & Quick Search */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flex: 1, maxWidth: '480px' }}>
+        <div
           style={{
-            fontFamily: 'var(--font-serif)',
-            fontSize: '1.45rem',
-            fontWeight: 700,
-            color: '#d97706',
-            letterSpacing: '-0.01em',
-          }}
-        >
-          HireFlow
-        </span>
-      </div>
-
-      {/* Top Navigation Links */}
-      <nav style={{ display: 'flex', alignItems: 'center', gap: '1.75rem', marginRight: 'auto' }}>
-        <NavLink
-          to="/dashboard"
-          style={({ isActive }) => ({
-            textDecoration: 'none',
-            fontSize: '0.9rem',
-            fontWeight: isActive ? 600 : 500,
-            color: isActive ? '#0f172a' : 'var(--text-secondary)',
-            padding: '0.4rem 0',
-            borderBottom: isActive ? '2px solid #d97706' : '2px solid transparent',
-            transition: 'all var(--transition-fast)',
-          })}
-        >
-          Dashboard
-        </NavLink>
-
-        <NavLink
-          to="/openings"
-          style={({ isActive }) => ({
-            textDecoration: 'none',
-            fontSize: '0.9rem',
-            fontWeight: isActive ? 600 : 500,
-            color: isActive ? '#0f172a' : 'var(--text-secondary)',
-            padding: '0.4rem 0',
-            borderBottom: isActive ? '2px solid #d97706' : '2px solid transparent',
-            transition: 'all var(--transition-fast)',
-          })}
-        >
-          Active Roles
-        </NavLink>
-
-        <NavLink
-          to="/candidates"
-          style={({ isActive }) => ({
-            textDecoration: 'none',
-            fontSize: '0.9rem',
-            fontWeight: isActive ? 600 : 500,
-            color: isActive ? '#0f172a' : 'var(--text-secondary)',
-            padding: '0.4rem 0',
-            borderBottom: isActive ? '2px solid #d97706' : '2px solid transparent',
-            transition: 'all var(--transition-fast)',
-          })}
-        >
-          Pipelines
-        </NavLink>
-
-        <NavLink
-          to="/alerts"
-          style={({ isActive }) => ({
-            textDecoration: 'none',
-            fontSize: '0.9rem',
-            fontWeight: isActive ? 600 : 500,
-            color: isActive ? '#0f172a' : 'var(--text-secondary)',
-            padding: '0.4rem 0',
-            borderBottom: isActive ? '2px solid #d97706' : '2px solid transparent',
-            transition: 'all var(--transition-fast)',
-          })}
-        >
-          Reports & Alerts
-        </NavLink>
-      </nav>
-
-      {/* Right Controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-        <button
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--text-secondary)',
-            cursor: 'pointer',
-            padding: '0.35rem',
+            position: 'relative',
+            width: '100%',
             display: 'flex',
             alignItems: 'center',
           }}
-          title="Search"
         >
-          <Search size={18} />
-        </button>
+          <Search
+            size={16}
+            style={{
+              position: 'absolute',
+              left: '0.85rem',
+              color: 'var(--text-muted)',
+              pointerEvents: 'none',
+            }}
+          />
+          <input
+            type="text"
+            placeholder="Search candidates, roles, or pipeline..."
+            style={{
+              width: '100%',
+              padding: '0.45rem 0.85rem 0.45rem 2.4rem',
+              backgroundColor: '#f8fafc',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-full)',
+              fontSize: '0.84rem',
+              color: 'var(--text-primary)',
+              outline: 'none',
+              transition: 'all var(--transition-fast)',
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = '#0066ff';
+              e.target.style.backgroundColor = '#ffffff';
+              e.target.style.boxShadow = '0 0 0 3px rgba(0, 102, 255, 0.1)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = 'var(--border-color)';
+              e.target.style.backgroundColor = '#f8fafc';
+              e.target.style.boxShadow = 'none';
+            }}
+          />
+        </div>
+      </div>
 
+      {/* Right Controls: Alerts Bell + Persona Role Badge + Avatar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginLeft: 'auto' }}>
+        {/* Role Badge */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            padding: '0.25rem 0.65rem',
+            borderRadius: 'var(--radius-full)',
+            backgroundColor: isRecruiter ? '#eff6ff' : '#f0f9ff',
+            border: `1px solid ${isRecruiter ? '#bfdbfe' : '#bae6fd'}`,
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            color: isRecruiter ? '#1d4ed8' : '#0369a1',
+          }}
+        >
+          <Shield size={12} />
+          <span>{isRecruiter ? 'Recruiter' : 'Interviewer'}</span>
+        </div>
+
+        {/* Alerts Bell */}
         <NavLink
           to="/alerts"
           style={{
@@ -121,10 +104,12 @@ export const Header: React.FC<HeaderProps> = ({ alertsCount = 0 }) => {
             border: 'none',
             color: 'var(--text-secondary)',
             cursor: 'pointer',
-            padding: '0.35rem',
+            padding: '0.4rem',
             display: 'flex',
             alignItems: 'center',
             position: 'relative',
+            borderRadius: 'var(--radius-sm)',
+            transition: 'color var(--transition-fast)',
           }}
           title="Stalled Candidate Alerts"
         >
@@ -134,7 +119,7 @@ export const Header: React.FC<HeaderProps> = ({ alertsCount = 0 }) => {
               style={{
                 position: 'absolute',
                 top: '-2px',
-                right: '-4px',
+                right: '-2px',
                 minWidth: '16px',
                 height: '16px',
                 padding: '0 3px',
@@ -154,21 +139,22 @@ export const Header: React.FC<HeaderProps> = ({ alertsCount = 0 }) => {
           )}
         </NavLink>
 
-        {/* User avatar pill */}
+        {/* User Avatar */}
         <div
           style={{
             width: '34px',
             height: '34px',
             borderRadius: '50%',
-            backgroundColor: '#eff6ff',
-            border: '1.5px solid #bfdbfe',
+            backgroundColor: isRecruiter ? '#eff6ff' : '#f0f9ff',
+            border: `1.5px solid ${isRecruiter ? '#bfdbfe' : '#bae6fd'}`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontWeight: 700,
             fontSize: '0.8rem',
-            color: '#2563eb',
+            color: isRecruiter ? '#2563eb' : '#0284c7',
           }}
+          title={`${currentUser?.name} (${currentUser?.email})`}
         >
           {initials}
         </div>

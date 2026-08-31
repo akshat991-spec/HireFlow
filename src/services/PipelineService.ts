@@ -162,7 +162,7 @@ export class PipelineService {
     }
 
     const app = currentRes.rows[0];
-    PipelineStateMachine.reinstate(user.role, app.current_stage, app.rejected_from_stage);
+    PipelineStateMachine.reinstate(user.role, app.current_stage, app.rejected_from_stage ?? null);
 
     const restoreStage = app.rejected_from_stage!;
     const now = new Date();

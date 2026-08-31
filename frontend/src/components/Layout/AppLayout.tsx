@@ -10,6 +10,7 @@ import { api } from '../../services/api.js';
 export const AppLayout: React.FC = () => {
   const { currentUser } = useAuth();
   const [alertsCount, setAlertsCount] = useState<number>(0);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
 
   const fetchAlertsCount = async () => {
     if (currentUser?.role !== Role.RECRUITER) {
@@ -33,11 +34,23 @@ export const AppLayout: React.FC = () => {
     return () => window.removeEventListener('hireflow:alerts-updated', handleUpdate);
   }, [currentUser]);
 
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed((prev) => !prev);
+  };
+
   return (
     <div className="app-layout">
-      <Sidebar alertsCount={alertsCount} />
+      <Sidebar
+        alertsCount={alertsCount}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={toggleSidebar}
+      />
       <main className="main-wrapper">
-        <Header alertsCount={alertsCount} />
+        <Header
+          alertsCount={alertsCount}
+          onToggleSidebar={toggleSidebar}
+          isSidebarCollapsed={isSidebarCollapsed}
+        />
         <div className="page-container" id="main-view">
           <Outlet />
         </div>
