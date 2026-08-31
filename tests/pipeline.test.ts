@@ -129,6 +129,24 @@ describe('Application Pipeline State Machine', () => {
       expect(res.body.error.message).toContain('progress linearly');
     });
 
+    it('rejects skipping stages: Screening -> Offer', async () => {
+      const res = await request(app)
+        .post('/api/applications/app_screening/stage')
+        .set('Authorization', `Bearer ${recruiterToken}`)
+        .send({ targetStage: Stage.OFFER });
+      expect(res.status).toBe(422);
+      expect(res.body.error.message).toContain('progress linearly');
+    });
+
+    it('rejects skipping stages: Interview -> Hired', async () => {
+      const res = await request(app)
+        .post('/api/applications/app_interview/stage')
+        .set('Authorization', `Bearer ${recruiterToken}`)
+        .send({ targetStage: Stage.HIRED });
+      expect(res.status).toBe(422);
+      expect(res.body.error.message).toContain('progress linearly');
+    });
+
     it('rejects backward transitions: Interview -> Screening', async () => {
       const res = await request(app)
         .post('/api/applications/app_interview/stage')
@@ -217,6 +235,40 @@ describe('Application Pipeline State Machine', () => {
         .set('Authorization', `Bearer ${recruiterToken}`);
       expect(res.status).toBe(200);
       expect(res.body.data.current_stage).toBe(Stage.SCREENING);
+    });
+
+    it('allows REJECTED -> INTERVIEW reinstatement when Interview was the previous stage', async () => {
+      // 1. Reject from INTERVIEW
+      const rejRes = await request(app)
+        .post('/api/applications/app_interview/reject')
+        .set('Authorization', `Bearer ${recruiterToken}`)
+        .send({ note: 'Temporarily on hold during interview loop' });
+      expect(rejRes.status).toBe(200);
+      expect(rejRes.body.data.current_stage).toBe(Stage.REJECTED);
+      expect(rejRes.body.data.rejected_from_stage).toBe(Stage.INTERVIEW);
+
+      // 2. Reinstate -> Must return to INTERVIEW
+      const reinRes = await request(app)
+        .post('/api/applications/app_interview/reinstate')
+        .set('Authorization', `Bearer ${recruiterToken}`)
+        .send({ note: 'Reopened candidate interview loop' });
+      expect(reinRes.status).toBe(200);
+      expect(reinRes.body.data.current_stage).toBe(Stage.INTERVIEW);
+    });
+
+    it('rejects arbitrary stage change: REJECTED -> APPLIED when rejected from INTERVIEW', async () => {
+      // Reject from INTERVIEW
+      await request(app)
+        .post('/api/applications/app_interview/reject')
+        .set('Authorization', `Bearer ${recruiterToken}`);
+
+      // Attempt arbitrary transition to APPLIED without valid progression
+      const directStageRes = await request(app)
+        .post('/api/applications/app_interview/stage')
+        .set('Authorization', `Bearer ${recruiterToken}`)
+        .send({ targetStage: Stage.APPLIED });
+      expect(directStageRes.status).toBe(422);
+      expect(directStageRes.body.error.message).toContain('reinstate the candidate first');
     });
 
     it('prevents reinstating an application that is not rejected', async () => {

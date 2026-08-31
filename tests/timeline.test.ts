@@ -389,5 +389,57 @@ describe('Immutable Application Timeline Audit Trail', () => {
       expect(res.body.success).toBe(false);
       expect(res.body.error.code).toBe('NOT_FOUND');
     });
+
+    it('rejects history update: PUT and PATCH on timeline events are not supported/allowed', async () => {
+      // 1. Attempt PUT on timeline event
+      const putRes = await request(app)
+        .put(`/api/applications/${appId}/timeline`)
+        .set('Authorization', `Bearer ${recruiterToken}`)
+        .send({ note_content: 'Tampered note content' });
+      expect([404, 405]).toContain(putRes.status);
+
+      // 2. Attempt PATCH on timeline event
+      const patchRes = await request(app)
+        .patch(`/api/applications/${appId}/timeline`)
+        .set('Authorization', `Bearer ${recruiterToken}`)
+        .send({ note_content: 'Tampered note content' });
+      expect([404, 405]).toContain(patchRes.status);
+    });
+
+    it('rejects history deletion: DELETE on timeline events is not supported/allowed', async () => {
+      const deleteRes = await request(app)
+        .delete(`/api/applications/${appId}/timeline`)
+        .set('Authorization', `Bearer ${recruiterToken}`);
+      expect([404, 405]).toContain(deleteRes.status);
+    });
+
+    it('rejects feedback update: PUT and PATCH on feedback are not supported/allowed', async () => {
+      // 1. Submit valid feedback first
+      await request(app)
+        .post(`/api/applications/${appId}/feedback`)
+        .set('Authorization', `Bearer ${interviewerToken}`)
+        .send({ feedback: 'Original immutable assessment' });
+
+      // 2. Attempt PUT on feedback
+      const putRes = await request(app)
+        .put(`/api/applications/${appId}/feedback`)
+        .set('Authorization', `Bearer ${interviewerToken}`)
+        .send({ feedback: 'Modified assessment' });
+      expect([404, 405]).toContain(putRes.status);
+
+      // 3. Attempt PATCH on feedback
+      const patchRes = await request(app)
+        .patch(`/api/applications/${appId}/feedback`)
+        .set('Authorization', `Bearer ${interviewerToken}`)
+        .send({ feedback: 'Modified assessment' });
+      expect([404, 405]).toContain(patchRes.status);
+    });
+
+    it('rejects feedback deletion: DELETE on feedback is not supported/allowed', async () => {
+      const deleteRes = await request(app)
+        .delete(`/api/applications/${appId}/feedback`)
+        .set('Authorization', `Bearer ${interviewerToken}`);
+      expect([404, 405]).toContain(deleteRes.status);
+    });
   });
 });
