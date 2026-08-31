@@ -132,12 +132,43 @@ export interface HealthCheckData {
   timestamp: string;
 }
 
-export interface DashboardMetrics {
+export interface DashboardHeadline {
   openPositions: number;
   activeApplications: number;
   interviewsThisWeek: number;
   hiresThisMonth: number;
-  byOpening: unknown[];
-  byStage: unknown[];
-  weeklyTrend: unknown[];
+}
+
+export interface DashboardOpeningMetric {
+  jobOpeningId: string;
+  title: string;
+  department: string;
+  totalApplications: number;
+  activeApplications: number;
+}
+
+export interface DashboardStageMetric {
+  stage: Stage;
+  count: number;
+  percentage: number;
+}
+
+export interface DashboardWeeklyTrend {
+  weekLabel: string;
+  weekStart: string;
+  count: number;
+}
+
+export interface DashboardStalledSummary {
+  totalStalled: number;
+  longestDays: number;
+  byStage: Record<string, number>;
+}
+
+export interface DashboardData {
+  headline: DashboardHeadline;
+  byOpening: DashboardOpeningMetric[];
+  byStage: DashboardStageMetric[];
+  weeklyTrend: DashboardWeeklyTrend[];
+  stalledSummary: DashboardStalledSummary;
 }

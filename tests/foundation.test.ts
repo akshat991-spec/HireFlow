@@ -58,12 +58,10 @@ describe('HireFlow Backend Foundation', () => {
     expect(res.body.success).toBe(false);
   });
 
-  it('GET /api/dashboard/metrics returns dashboard metrics skeleton', async () => {
+  it('GET /api/dashboard/metrics requires authentication', async () => {
     const res = await request(app).get('/api/dashboard/metrics');
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    expect(res.body.data).toHaveProperty('openPositions');
-    expect(res.body.data).toHaveProperty('activeApplications');
+    expect(res.status).toBe(401);
+    expect(res.body.success).toBe(false);
   });
 
   it('handles 404 for unknown endpoints uniformly', async () => {
