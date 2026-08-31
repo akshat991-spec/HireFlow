@@ -6,9 +6,10 @@ import { Role } from '../../types/index.js';
 
 interface HeaderProps {
   onAddCandidate?: () => void;
+  alertsCount?: number;
 }
 
-export const Header: React.FC<HeaderProps> = () => {
+export const Header: React.FC<HeaderProps> = ({ alertsCount = 0 }) => {
   const { currentUser } = useAuth();
   const isRecruiter = currentUser?.role === Role.RECRUITER;
 
@@ -125,20 +126,32 @@ export const Header: React.FC<HeaderProps> = () => {
             alignItems: 'center',
             position: 'relative',
           }}
-          title="Notifications"
+          title="Stalled Candidate Alerts"
         >
           <Bell size={18} />
-          <span
-            style={{
-              position: 'absolute',
-              top: '2px',
-              right: '2px',
-              width: '7px',
-              height: '7px',
-              borderRadius: '50%',
-              backgroundColor: '#d97706',
-            }}
-          />
+          {alertsCount > 0 && (
+            <span
+              style={{
+                position: 'absolute',
+                top: '-2px',
+                right: '-4px',
+                minWidth: '16px',
+                height: '16px',
+                padding: '0 3px',
+                borderRadius: '8px',
+                backgroundColor: '#dc2626',
+                color: '#ffffff',
+                fontSize: '0.65rem',
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1.5px solid #ffffff',
+              }}
+            >
+              {alertsCount}
+            </span>
+          )}
         </NavLink>
 
         {/* User avatar pill */}

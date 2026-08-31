@@ -119,6 +119,23 @@ export interface StalledAlertDismissal {
   dismissed_at: Date;
 }
 
+export interface StalledAlert {
+  id: string;
+  applicationId: string;
+  candidateName: string;
+  candidateEmail: string;
+  jobOpeningId: string;
+  jobTitle: string;
+  department: string;
+  currentStage: Stage;
+  stageEnteredAt: string;
+  daysInStage: number;
+  thresholdDays: number;
+  source: string;
+  appliedDate: string;
+  interviewers?: UserPublic[];
+}
+
 export interface ApiResponse<T = unknown> {
   success: true;
   data: T;

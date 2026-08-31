@@ -52,11 +52,10 @@ describe('HireFlow Backend Foundation', () => {
     expect(res.body.success).toBe(false);
   });
 
-  it('GET /api/alerts/stalled returns alerts skeleton', async () => {
+  it('GET /api/alerts/stalled requires authentication', async () => {
     const res = await request(app).get('/api/alerts/stalled');
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    expect(res.body.data).toHaveProperty('count');
+    expect(res.status).toBe(401);
+    expect(res.body.success).toBe(false);
   });
 
   it('GET /api/dashboard/metrics returns dashboard metrics skeleton', async () => {
