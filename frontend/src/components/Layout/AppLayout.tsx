@@ -11,6 +11,7 @@ export const AppLayout: React.FC = () => {
   const { currentUser } = useAuth();
   const [alertsCount, setAlertsCount] = useState<number>(0);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
   const fetchAlertsCount = async () => {
     if (currentUser?.role !== Role.RECRUITER) {
@@ -38,18 +39,36 @@ export const AppLayout: React.FC = () => {
     setIsSidebarCollapsed((prev) => !prev);
   };
 
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen((prev) => !prev);
+  };
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+  };
+
   return (
     <div className="app-layout">
+      {/* Mobile Drawer Backdrop */}
+      <div
+        className={`sidebar-backdrop ${isMobileMenuOpen ? 'active' : ''}`}
+        onClick={closeMobileMenu}
+      />
+
       <Sidebar
         alertsCount={alertsCount}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={toggleSidebar}
+        isMobileOpen={isMobileMenuOpen}
+        onCloseMobile={closeMobileMenu}
       />
+
       <main className="main-wrapper">
         <Header
           alertsCount={alertsCount}
           onToggleSidebar={toggleSidebar}
           isSidebarCollapsed={isSidebarCollapsed}
+          onToggleMobileMenu={toggleMobileMenu}
         />
         <div className="page-container" id="main-view">
           <Outlet />

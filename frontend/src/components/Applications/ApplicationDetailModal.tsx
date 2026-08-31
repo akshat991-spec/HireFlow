@@ -294,6 +294,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
 
   return (
     <div
+      className="modal-overlay"
       style={{
         position: 'fixed',
         top: 0,
@@ -310,7 +311,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
       }}
     >
       <div
-        className="card"
+        className="card modal-content"
         style={{
           width: '100%',
           maxWidth: '960px',
@@ -536,15 +537,16 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
         {/* 2. Linear Pipeline Stepper Card (Exact matching design) */}
         {application && application.current_stage !== Stage.REJECTED && (
           <div
+            className="stepper-scroll-container"
             style={{
               backgroundColor: '#ffffff',
               border: '1px solid #e2e8f0',
               borderRadius: '14px',
-              padding: '1.5rem 2.5rem',
+              padding: '1.25rem 1.5rem',
               boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
             }}
           >
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div className="stepper-track-min" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               {/* Connecting line */}
               <div
                 style={{
@@ -737,7 +739,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
           <>
             {/* TAB: Overview (Two-column layout as in screenshot) */}
             {activeTab === 'overview' && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
+              <div className="modal-two-col">
                 {/* Left Column: Resume Document & Experience & Skills */}
                 <div
                   style={{

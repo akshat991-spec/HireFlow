@@ -8,6 +8,8 @@ import {
   Check,
   PanelLeftClose,
   PanelLeftOpen,
+  LogOut,
+  X,
 } from 'lucide-react';
 import { useAuth, DEMO_ACCOUNTS } from '../../context/AuthContext.js';
 import { Role } from '../../types/index.js';
@@ -16,14 +18,18 @@ interface SidebarProps {
   alertsCount?: number;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   alertsCount = 0,
   isCollapsed = false,
   onToggleCollapse,
+  isMobileOpen = false,
+  onCloseMobile,
 }) => {
-  const { currentUser, loginAs, loading } = useAuth();
+  const { currentUser, loginAs, logout, loading } = useAuth();
   const [showSwitchDropdown, setShowSwitchDropdown] = useState(false);
 
   const initials = currentUser?.name
@@ -37,12 +43,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const isRecruiter = currentUser?.role === Role.RECRUITER;
 
+  const handleNavClick = () => {
+    if (onCloseMobile) {
+      onCloseMobile();
+    }
+  };
+
   return (
-    <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
+    <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''} ${isMobileOpen ? 'mobile-open' : ''}`}>
       {/* Brand Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'space-between', width: '100%', paddingBottom: '1.25rem', borderBottom: '1px solid var(--border-color)' }}>
         <NavLink
           to="/dashboard"
+          onClick={handleNavClick}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -60,29 +73,45 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </NavLink>
 
-        {!isCollapsed && onToggleCollapse && (
-          <button
-            onClick={onToggleCollapse}
-            title="Collapse Sidebar"
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-              padding: '0.3rem',
-              display: 'flex',
-              alignItems: 'center',
-              borderRadius: 'var(--radius-sm)',
-              transition: 'all var(--transition-fast)',
-            }}
-            className="hover-bg"
-          >
-            <PanelLeftClose size={18} />
-          </button>
-        )}
+        {/* Mobile close button or Desktop collapse toggle */}
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          {/* Mobile Close X button */}
+          {isMobileOpen && (
+            <button
+              onClick={onCloseMobile}
+              title="Close Menu"
+              className="mobile-menu-btn"
+              style={{ display: 'flex', padding: '0.25rem', color: 'var(--text-muted)' }}
+            >
+              <X size={20} />
+            </button>
+          )}
+
+          {/* Desktop collapse toggle button */}
+          {!isCollapsed && onToggleCollapse && !isMobileOpen && (
+            <button
+              onClick={onToggleCollapse}
+              title="Collapse Sidebar"
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                padding: '0.3rem',
+                display: 'flex',
+                alignItems: 'center',
+                borderRadius: 'var(--radius-sm)',
+                transition: 'all var(--transition-fast)',
+              }}
+              className="hover-bg"
+            >
+              <PanelLeftClose size={18} />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* When collapsed, provide expand button right beneath brand */}
+      {/* When collapsed on desktop, provide expand button right beneath brand */}
       {isCollapsed && onToggleCollapse && (
         <div style={{ marginTop: '0.75rem', width: '100%', display: 'flex', justifyContent: 'center' }}>
           <button
@@ -113,6 +142,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <li>
             <NavLink
               to="/dashboard"
+              onClick={handleNavClick}
               className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
               id="nav-dashboard"
               title="Dashboard Overview"
@@ -124,6 +154,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <li>
             <NavLink
               to="/openings"
+              onClick={handleNavClick}
               className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
               id="nav-openings"
               title="Job Openings"
@@ -135,6 +166,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <li>
             <NavLink
               to="/candidates"
+              onClick={handleNavClick}
               className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
               id="nav-candidates"
               title={isRecruiter ? 'Candidate Pipelines' : 'My Applications'}
@@ -146,6 +178,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <li>
             <NavLink
               to="/alerts"
+              onClick={handleNavClick}
               className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
               id="nav-alerts"
               title="Stalled Candidate Alerts"
@@ -240,6 +273,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClick={async () => {
                     await loginAs(acc.email);
                     setShowSwitchDropdown(false);
+                    if (onCloseMobile) onCloseMobile();
                   }}
                   disabled={loading}
                   style={{
@@ -265,6 +299,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </button>
               );
             })}
+
+            <div style={{ borderTop: '1px solid var(--border-color)', marginTop: '0.25rem', paddingTop: '0.25rem' }}>
+              <button
+                onClick={async () => {
+                  await logout();
+                  setShowSwitchDropdown(false);
+                  if (onCloseMobile) onCloseMobile();
+                }}
+                disabled={loading}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.45rem 0.6rem',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  borderRadius: 'var(--radius-sm)',
+                  color: '#dc2626',
+                  cursor: 'pointer',
+                  fontSize: '0.825rem',
+                  textAlign: 'left',
+                  width: '100%',
+                  fontWeight: 600,
+                }}
+              >
+                <LogOut size={15} />
+                <span>Log Out</span>
+              </button>
+            </div>
           </div>
         )}
       </div>

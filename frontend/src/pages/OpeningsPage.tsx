@@ -251,7 +251,7 @@ export const OpeningsPage: React.FC = () => {
         </div>
       ) : (
         /* Openings Grid */
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.25rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '1.25rem' }}>
           {filteredOpenings.map((opening) => (
             <div
               key={opening.id}

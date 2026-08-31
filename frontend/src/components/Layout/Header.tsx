@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Search, Bell, Shield, Sparkles } from 'lucide-react';
+import { Search, Bell, Shield, Menu } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.js';
 import { Role } from '../../types/index.js';
 
@@ -9,10 +9,12 @@ interface HeaderProps {
   alertsCount?: number;
   onToggleSidebar?: () => void;
   isSidebarCollapsed?: boolean;
+  onToggleMobileMenu?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   alertsCount = 0,
+  onToggleMobileMenu,
 }) => {
   const { currentUser } = useAuth();
   const isRecruiter = currentUser?.role === Role.RECRUITER;
@@ -28,8 +30,17 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="top-bar">
+      {/* Mobile Menu Hamburger Button */}
+      <button
+        className="mobile-menu-btn"
+        onClick={onToggleMobileMenu}
+        title="Open Navigation Menu"
+      >
+        <Menu size={22} />
+      </button>
+
       {/* Workspace Context & Quick Search */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flex: 1, maxWidth: '480px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flex: 1, maxWidth: '440px' }}>
         <div
           style={{
             position: 'relative',
@@ -75,14 +86,14 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Right Controls: Alerts Bell + Persona Role Badge + Avatar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginLeft: 'auto' }}>
+      {/* Right Controls: Role Badge + Alerts Bell + User Avatar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginLeft: 'auto' }}>
         {/* Role Badge */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.4rem',
+            gap: '0.35rem',
             padding: '0.25rem 0.65rem',
             borderRadius: 'var(--radius-full)',
             backgroundColor: isRecruiter ? '#eff6ff' : '#f0f9ff',
@@ -90,6 +101,7 @@ export const Header: React.FC<HeaderProps> = ({
             fontSize: '0.75rem',
             fontWeight: 700,
             color: isRecruiter ? '#1d4ed8' : '#0369a1',
+            whiteSpace: 'nowrap',
           }}
         >
           <Shield size={12} />
@@ -153,6 +165,7 @@ export const Header: React.FC<HeaderProps> = ({
             fontWeight: 700,
             fontSize: '0.8rem',
             color: isRecruiter ? '#2563eb' : '#0284c7',
+            flexShrink: 0,
           }}
           title={`${currentUser?.name} (${currentUser?.email})`}
         >

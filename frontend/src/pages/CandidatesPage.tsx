@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Search,
   Plus,
@@ -38,15 +39,17 @@ function getCandidateInitials(name: string): string {
 
 export const CandidatesPage: React.FC = () => {
   const { currentUser } = useAuth();
+  const [searchParams] = useSearchParams();
+
   const [applications, setApplications] = useState<Application[]>([]);
   const [openings, setOpenings] = useState<JobOpening[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
   // Search & Filter State
-  const [search, setSearch] = useState('');
-  const [stageFilter, setStageFilter] = useState('');
-  const [openingFilter, setOpeningFilter] = useState('');
+  const [search, setSearch] = useState(searchParams.get('search') || '');
+  const [stageFilter, setStageFilter] = useState(searchParams.get('stage') || '');
+  const [openingFilter, setOpeningFilter] = useState(searchParams.get('opening') || '');
   const [sourceFilter, setSourceFilter] = useState('');
 
   // Sorting & Pagination State
@@ -126,6 +129,15 @@ export const CandidatesPage: React.FC = () => {
   useEffect(() => {
     fetchOpenings();
   }, []);
+
+  useEffect(() => {
+    const stage = searchParams.get('stage');
+    const opening = searchParams.get('opening');
+    const q = searchParams.get('search');
+    if (stage !== null) setStageFilter(stage);
+    if (opening !== null) setOpeningFilter(opening);
+    if (q !== null) setSearch(q);
+  }, [searchParams]);
 
   useEffect(() => {
     fetchApplications();
@@ -623,13 +635,8 @@ export const CandidatesPage: React.FC = () => {
         </div>
       )}
 
-      {/* Loading Skeleton */}
-      {loading ? (
-        <div className="card" style={{ padding: '3.5rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-          Loading candidates...
-        </div>
-      ) : applications.length === 0 ? (
-        /* Zero Results Empty State */
+      {/* Zero Results Empty State (only when not loading and empty) */}
+      {!loading && applications.length === 0 ? (
         <div
           className="card"
           style={{
@@ -657,7 +664,7 @@ export const CandidatesPage: React.FC = () => {
           </div>
           <div>
             <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.35rem', color: '#0f172a' }}>
-              {isInterviewer ? 'No Assigned Applications Found' : 'No Applications Found'}
+              {isInterviewer ? 'No Assigned Applications' : 'No Applications Found'}
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '420px', marginBottom: '1rem' }}>
               {isInterviewer
@@ -674,7 +681,7 @@ export const CandidatesPage: React.FC = () => {
         </div>
       ) : (
         /* Applications Table */
-        <div className="table-container">
+        <div className="table-container table-responsive" style={{ opacity: loading ? 0.6 : 1, transition: 'opacity 150ms ease' }}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>

@@ -120,7 +120,7 @@ export const DashboardPage: React.FC = () => {
       )}
 
       {/* 1. Headline KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '1rem' }}>
+      <div className="kpi-grid">
         {/* Open Positions */}
         <NavLink
           to="/openings"
@@ -196,7 +196,12 @@ export const DashboardPage: React.FC = () => {
         </NavLink>
 
         {/* Interviews This Week */}
-        <div className="card">
+        <NavLink
+          to="/candidates?stage=INTERVIEW"
+          style={{ textDecoration: 'none', color: 'inherit' }}
+          className="card"
+          title="Click to view candidates in the Interview stage"
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -222,13 +227,19 @@ export const DashboardPage: React.FC = () => {
               <Calendar size={20} />
             </div>
           </div>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>
-            Interview stage activity (since Mon)
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', color: '#0284c7', marginTop: '0.75rem', fontWeight: 600 }}>
+            <span>View interview candidates</span>
+            <ArrowUpRight size={13} />
           </div>
-        </div>
+        </NavLink>
 
         {/* Hires This Month */}
-        <div className="card">
+        <NavLink
+          to="/candidates?stage=HIRED"
+          style={{ textDecoration: 'none', color: 'inherit' }}
+          className="card"
+          title="Click to view candidates hired this month"
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -254,14 +265,15 @@ export const DashboardPage: React.FC = () => {
               <Award size={20} />
             </div>
           </div>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>
-            Candidates marked Hired this month
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', color: '#059669', marginTop: '0.75rem', fontWeight: 600 }}>
+            <span>View hired candidates</span>
+            <ArrowUpRight size={13} />
           </div>
-        </div>
+        </NavLink>
       </div>
 
       {/* 2. Middle Grid: Pipeline Funnel + 12-Week Quarterly Trend */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.25rem' }}>
+      <div className="dashboard-two-col">
         {/* Pipeline Stage Distribution Funnel */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -284,7 +296,21 @@ export const DashboardPage: React.FC = () => {
               const theme = STAGE_THEME[s.stage] || STAGE_THEME[Stage.APPLIED];
 
               return (
-                <div key={s.stage} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                <NavLink
+                  key={s.stage}
+                  to={`/candidates?stage=${s.stage}`}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.35rem',
+                    textDecoration: 'none',
+                    padding: '0.4rem 0.5rem',
+                    borderRadius: 'var(--radius-sm)',
+                    transition: 'background-color var(--transition-fast)',
+                  }}
+                  className="hover-bg"
+                  title={`View candidates in ${s.stage}`}
+                >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
                     <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{s.stage}</span>
                     <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
@@ -309,7 +335,7 @@ export const DashboardPage: React.FC = () => {
                       }}
                     />
                   </div>
-                </div>
+                </NavLink>
               );
             })}
           </div>
@@ -394,7 +420,7 @@ export const DashboardPage: React.FC = () => {
       </div>
 
       {/* 3. Bottom Grid: Top Openings + Stalled Pipeline Summary */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.25rem' }}>
+      <div className="dashboard-two-col">
         {/* Applications by Job Opening */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -416,8 +442,9 @@ export const DashboardPage: React.FC = () => {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
               {data?.byOpening.slice(0, 5).map((op) => (
-                <div
+                <NavLink
                   key={op.jobOpeningId}
+                  to={`/candidates?opening=${op.jobOpeningId}`}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -426,7 +453,12 @@ export const DashboardPage: React.FC = () => {
                     backgroundColor: '#f8fafc',
                     border: '1px solid var(--border-color)',
                     borderRadius: 'var(--radius-sm)',
+                    textDecoration: 'none',
+                    color: 'inherit',
+                    transition: 'all var(--transition-fast)',
                   }}
+                  className="hover-bg"
+                  title={`View candidates for ${op.title}`}
                 >
                   <div>
                     <div style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
@@ -446,7 +478,7 @@ export const DashboardPage: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                </div>
+                </NavLink>
               ))}
             </div>
           )}
