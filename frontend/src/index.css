@@ -535,13 +535,12 @@ input[type="checkbox"]:indeterminate::before {
 /* Stepper Track Responsive Wrapper */
 .stepper-scroll-container {
   width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  padding-bottom: 0.25rem;
+  overflow-x: visible;
 }
 
 .stepper-track-min {
-  min-width: 480px;
+  width: 100%;
+  min-width: 0;
 }
 
 /* --------------------------------------------------------------------------

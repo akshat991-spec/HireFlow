@@ -193,6 +193,7 @@ export const CandidatesPage: React.FC = () => {
         });
         setSelectedIds([]);
         fetchApplications();
+        window.dispatchEvent(new CustomEvent('hireflow:alerts-updated'));
       }
     } catch (err: any) {
       setError(err.message || 'Bulk advance failed');
@@ -227,6 +228,7 @@ export const CandidatesPage: React.FC = () => {
         setSelectedIds([]);
         setIsConfirmingBulkReject(false);
         fetchApplications();
+        window.dispatchEvent(new CustomEvent('hireflow:alerts-updated'));
       }
     } catch (err: any) {
       setError(err.message || 'Bulk reject failed');

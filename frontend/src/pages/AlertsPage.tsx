@@ -56,6 +56,7 @@ export const AlertsPage: React.FC = () => {
       );
       if (res.success) {
         setAlerts(res.data.alerts);
+        window.dispatchEvent(new CustomEvent('hireflow:alerts-updated'));
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load stalled alerts');
@@ -66,6 +67,9 @@ export const AlertsPage: React.FC = () => {
 
   useEffect(() => {
     fetchAlerts();
+    const handleGlobalUpdate = () => fetchAlerts();
+    window.addEventListener('hireflow:alerts-updated', handleGlobalUpdate);
+    return () => window.removeEventListener('hireflow:alerts-updated', handleGlobalUpdate);
   }, [currentUser]);
 
   const handleDismiss = async (alert: StalledAlert) => {

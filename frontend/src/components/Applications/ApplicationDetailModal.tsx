@@ -234,6 +234,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
         setPendingNextStage(null);
         fetchApplicationDetails();
         onApplicationUpdated?.();
+        window.dispatchEvent(new CustomEvent('hireflow:alerts-updated'));
       }
     } catch (err: any) {
       (window as any).showToast?.(err.message || 'Failed to advance stage', 'error');
@@ -256,6 +257,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
         setRejectReason('');
         fetchApplicationDetails();
         onApplicationUpdated?.();
+        window.dispatchEvent(new CustomEvent('hireflow:alerts-updated'));
       }
     } catch (err: any) {
       (window as any).showToast?.(err.message || 'Failed to reject candidate', 'error');
@@ -278,6 +280,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
         setReinstateNote('');
         fetchApplicationDetails();
         onApplicationUpdated?.();
+        window.dispatchEvent(new CustomEvent('hireflow:alerts-updated'));
       }
     } catch (err: any) {
       (window as any).showToast?.(err.message || 'Failed to reinstate candidate', 'error');
@@ -311,6 +314,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
   return (
     <div
       className="modal-overlay"
+      onClick={onClose}
       style={{
         position: 'fixed',
         top: 0,
@@ -328,6 +332,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
     >
       <div
         className="card modal-content"
+        onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%',
           maxWidth: '960px',

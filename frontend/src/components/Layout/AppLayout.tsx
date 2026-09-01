@@ -32,7 +32,13 @@ export const AppLayout: React.FC = () => {
     fetchAlertsCount();
     const handleUpdate = () => fetchAlertsCount();
     window.addEventListener('hireflow:alerts-updated', handleUpdate);
-    return () => window.removeEventListener('hireflow:alerts-updated', handleUpdate);
+    window.addEventListener('focus', handleUpdate);
+    const interval = setInterval(fetchAlertsCount, 10000);
+    return () => {
+      window.removeEventListener('hireflow:alerts-updated', handleUpdate);
+      window.removeEventListener('focus', handleUpdate);
+      clearInterval(interval);
+    };
   }, [currentUser]);
 
   const toggleSidebar = () => {

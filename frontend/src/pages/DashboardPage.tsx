@@ -359,59 +359,97 @@ export const DashboardPage: React.FC = () => {
           <div
             style={{
               display: 'flex',
-              alignItems: 'flex-end',
-              justifyContent: 'space-between',
-              height: '160px',
-              paddingTop: '1rem',
-              paddingBottom: '0.5rem',
-              gap: '6px',
+              flexDirection: 'column',
+              gap: '0.25rem',
             }}
           >
-            {data?.weeklyTrend.map((week, idx) => {
-              const barHeightPct = Math.max(10, Math.round((week.count / maxWeeklyCount) * 100));
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'flex-end',
+                justifyContent: 'space-between',
+                height: '140px',
+                paddingTop: '0.75rem',
+                gap: '6px',
+              }}
+            >
+              {data?.weeklyTrend.map((week, idx) => {
+                const barHeightPct = Math.max(10, Math.round((week.count / maxWeeklyCount) * 100));
+                const dayNum = week.weekLabel.split(' ')[1] || `${idx + 1}`;
 
-              return (
-                <div
-                  key={idx}
-                  style={{
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '0.4rem',
-                    height: '100%',
-                    justifyContent: 'flex-end',
-                  }}
-                  title={`${week.weekLabel}: ${week.count} applications`}
-                >
-                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: week.count > 0 ? '#0f172a' : '#cbd5e1' }}>
-                    {week.count}
-                  </span>
+                return (
                   <div
+                    key={idx}
                     style={{
-                      width: '100%',
-                      maxWidth: '28px',
-                      height: `${barHeightPct}%`,
-                      backgroundColor: week.count > 0 ? '#0066ff' : '#e2e8f0',
-                      borderRadius: '4px 4px 0 0',
-                      transition: 'height 250ms ease',
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      height: '100%',
+                      justifyContent: 'flex-end',
                     }}
-                  />
-                  <span
+                    title={`Week of ${week.weekLabel}: ${week.count} application${week.count === 1 ? '' : 's'}`}
+                  >
+                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: week.count > 0 ? '#0f172a' : '#cbd5e1' }}>
+                      {week.count}
+                    </span>
+                    <div
+                      style={{
+                        width: '100%',
+                        maxWidth: '28px',
+                        height: `${barHeightPct}%`,
+                        backgroundColor: week.count > 0 ? '#0066ff' : '#e2e8f0',
+                        borderRadius: '4px 4px 0 0',
+                        transition: 'height 250ms ease',
+                      }}
+                    />
+                    <span
+                      style={{
+                        fontSize: '0.65rem',
+                        color: 'var(--text-muted)',
+                        fontWeight: 500,
+                      }}
+                    >
+                      {dayNum}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Distinct Month Axis: Month names appear exactly once */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                paddingTop: '0.35rem',
+                borderTop: '1px solid #f1f5f9',
+                gap: '6px',
+              }}
+            >
+              {data?.weeklyTrend.map((week, idx, arr) => {
+                const currentMonth = week.weekLabel.split(' ')[0];
+                const prevMonth = idx > 0 ? arr[idx - 1].weekLabel.split(' ')[0] : null;
+                const isFirstWeekOfMonth = currentMonth !== prevMonth;
+
+                return (
+                  <div
+                    key={idx}
                     style={{
-                      fontSize: '0.65rem',
-                      color: 'var(--text-muted)',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      maxWidth: '32px',
+                      flex: 1,
+                      textAlign: 'center',
+                      fontSize: '0.7rem',
+                      fontWeight: 700,
+                      color: isFirstWeekOfMonth ? '#334155' : 'transparent',
+                      userSelect: 'none',
                     }}
                   >
-                    {week.weekLabel.split(' ')[0]}
-                  </span>
-                </div>
-              );
-            })}
+                    {isFirstWeekOfMonth ? currentMonth : ''}
+                  </div>
+                );
+              })}
+            </div>
           </div>
           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textAlign: 'center' }}>
             Weekly candidate applications received across open positions
@@ -577,31 +615,6 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Footer System Status Banner */}
-      <div
-        className="card"
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '0.85rem 1.25rem',
-          backgroundColor: '#ffffff',
-          fontSize: '0.82rem',
-          color: 'var(--text-muted)',
-          flexWrap: 'wrap',
-          gap: '0.75rem',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: '#10b981' }} />
-          <span>
-            API Service: <strong style={{ color: 'var(--text-primary)' }}>Operational</strong> ({health?.environment}) • PostgreSQL Database: <strong style={{ color: 'var(--text-primary)' }}>{health?.database}</strong>
-          </span>
-        </div>
-        <div>
-          Server Uptime: <strong style={{ color: 'var(--text-primary)' }}>{Math.floor(health?.uptime || 0)}s</strong>
-        </div>
-      </div>
     </div>
   );
 };
