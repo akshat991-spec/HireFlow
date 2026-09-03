@@ -5,6 +5,8 @@ import { UserPublic, Role } from '../types/index.js';
 interface AuthContextType {
   currentUser: UserPublic | null;
   loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string, role: Role) => Promise<void>;
   loginAs: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -13,6 +15,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   currentUser: null,
   loading: true,
+  login: async () => {},
+  register: async () => {},
   loginAs: async () => {},
   logout: async () => {},
   refreshUser: async () => {},
@@ -24,18 +28,21 @@ export const DEMO_ACCOUNTS = [
     email: 'recruiter@hireflow.test',
     role: Role.RECRUITER,
     badge: 'Recruiter',
+    description: 'Full pipeline authority, manage openings & panels',
   },
   {
     name: 'Alex Rivera',
     email: 'interviewer@hireflow.test',
     role: Role.INTERVIEWER,
     badge: 'Interviewer 1',
+    description: 'Evaluate candidates & leave feedback',
   },
   {
     name: 'Elena Rostova',
     email: 'interviewer2@hireflow.test',
     role: Role.INTERVIEWER,
     badge: 'Interviewer 2',
+    description: 'Technical evaluation panelist',
   },
 ];
 
@@ -49,13 +56,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (res.success && res.data) {
         setCurrentUser(res.data);
       } else {
-        // Automatically login as Sarah Recruiter by default
-        await loginAs('recruiter@hireflow.test');
+        setCurrentUser(null);
       }
     } catch {
-      await loginAs('recruiter@hireflow.test');
+      setCurrentUser(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const login = async (email: string, password: string) => {
+    const res = await api.post<{ user: UserPublic; token: string }>('/api/auth/login', {
+      email,
+      password,
+    });
+    if (res.success && res.data) {
+      localStorage.setItem('hireflow_token', res.data.token);
+      setCurrentUser(res.data.user);
+      (window as any).showToast?.(`Welcome back, ${res.data.user.name}!`, 'success');
+      window.dispatchEvent(new CustomEvent('hireflow:alerts-updated'));
+    }
+  };
+
+  const register = async (name: string, email: string, password: string, role: Role) => {
+    const res = await api.post<{ user: UserPublic; token: string }>('/api/auth/register', {
+      name,
+      email,
+      password,
+      role,
+    });
+    if (res.success && res.data) {
+      localStorage.setItem('hireflow_token', res.data.token);
+      setCurrentUser(res.data.user);
+      const roleMsg = role === Role.INTERVIEWER
+        ? 'Assigned to sample candidates to get started!'
+        : 'Access to all openings & candidate records enabled!';
+      (window as any).showToast?.(`Account registered! ${roleMsg}`, 'success');
+      window.dispatchEvent(new CustomEvent('hireflow:alerts-updated'));
     }
   };
 
@@ -93,7 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ currentUser, loading, loginAs, logout, refreshUser }}>
+    <AuthContext.Provider value={{ currentUser, loading, login, register, loginAs, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

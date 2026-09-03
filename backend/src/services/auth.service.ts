@@ -37,6 +37,88 @@ export class AuthService {
     }
   }
 
+  static async register(
+    name: string,
+    email: string,
+    password: string,
+    role: Role,
+    dbQuery: typeof query = query
+  ): Promise<{ user: UserPublic; token: string }> {
+    const existing = await dbQuery<User>(
+      'SELECT id FROM users WHERE LOWER(email) = LOWER($1)',
+      [email.trim()]
+    );
+
+    if (existing.rows.length > 0) {
+      const { ValidationError } = await import('../errors/AppError.js');
+      throw new ValidationError('An account with this email address already exists');
+    }
+
+    const passwordHash = await this.hashPassword(password);
+    const userId = 'usr_' + Math.random().toString(36).substring(2, 11);
+    const now = new Date();
+
+    await dbQuery(
+      `INSERT INTO users (id, name, email, password_hash, role, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [userId, name.trim(), email.trim().toLowerCase(), passwordHash, role, now, now]
+    );
+
+    // If registered as an INTERVIEWER, assign to sample active candidates across open positions
+    // so their initial dashboard & "My Applications" view is pre-populated and not an empty page
+    if (role === Role.INTERVIEWER) {
+      try {
+        const sampleApps = await dbQuery<{ id: string }>(
+          `SELECT a.id 
+           FROM applications a 
+           JOIN job_openings j ON a.job_opening_id = j.id 
+           WHERE j.status = 'OPEN' 
+             AND a.current_stage IN ('INTERVIEW', 'SCREENING', 'OFFER')
+           ORDER BY a.applied_date DESC
+           LIMIT 3`
+        );
+
+        for (const app of sampleApps.rows) {
+          await dbQuery(
+            `INSERT INTO application_interviewers (application_id, user_id, assigned_at)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (application_id, user_id) DO NOTHING`,
+            [app.id, userId, now]
+          );
+
+          const eventId = Math.random().toString(36).substring(2, 15);
+          await dbQuery(
+            `INSERT INTO timeline_events (id, application_id, event_type, actor_id, note_content, created_at)
+             VALUES ($1, $2, 'INTERVIEWER_ASSIGNED', $3, $4, $5)`,
+            [eventId, app.id, userId, `Assigned ${name.trim()} (${role}) to interview panel`, now]
+          );
+        }
+      } catch (assignErr) {
+        console.warn('Could not auto-assign sample candidates to new interviewer:', assignErr);
+      }
+    }
+
+    const authPayload: AuthUserPayload = {
+      id: userId,
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      role,
+    };
+
+    const token = this.generateToken(authPayload);
+
+    return {
+      user: {
+        id: userId,
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        role,
+        created_at: now,
+      },
+      token,
+    };
+  }
+
   static async login(
     email: string,
     password: string,

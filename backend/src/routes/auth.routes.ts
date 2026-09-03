@@ -14,6 +14,44 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
+const registerSchema = z.object({
+  name: z.string().trim().min(1, 'Full name is required'),
+  email: z.string().email('Invalid email address format'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  role: z.nativeEnum(Role, { errorMap: () => ({ message: 'Role must be RECRUITER or INTERVIEWER' }) }),
+});
+
+// POST /api/auth/register
+authRouter.post('/register', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const parseResult = registerSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      const messages = parseResult.error.errors.map((e) => e.message).join(', ');
+      throw new ValidationError(messages, parseResult.error.format());
+    }
+
+    const { name, email, password, role } = parseResult.data;
+    const { user, token } = await AuthService.register(name, email, password, role);
+
+    res.cookie(config.sessionCookieName, token, {
+      httpOnly: true,
+      secure: config.isProduction,
+      sameSite: config.isProduction ? 'none' : 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    const response: ApiResponse<{ user: UserPublic; token: string }> = {
+      success: true,
+      data: { user, token },
+      message: 'Account registered successfully',
+    };
+
+    res.status(201).json(response);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // POST /api/auth/login
 authRouter.post('/login', async (req: Request, res: Response, next: NextFunction) => {
   try {
