@@ -28,24 +28,16 @@ Log the decisions that actually shaped this codebase — the ones where a real a
 
 ---
 
-## Decision 4: Self-Contained Monorepo Structure vs Single Shared Root
+## Decision 4: Dedicated Authentication Gating & Registration vs Auto-Login Default
 
-- **Chose:** Two separate, self-contained directories: `backend/` and `frontend/`, coordinated via root npm workspaces.
-- **Rejected:** A monolithic root where server source code lived in `src/` and client code lived in `frontend/src/` sharing a single `package.json` and `tsconfig.json`.
-- **Why:** Clean separation of concerns. The backend requires NodeNext module resolution, Express, and database drivers; the frontend requires DOM types, React JSX, and Vite bundling. Keeping them separated prevents dependency leaks and allows independent builds.
-- **Later reversed:** We originally started with backend code inside root `src/` and frontend code in `frontend/` sharing a root `package.json`. While this minimized configuration files early on, it caused script confusion when running commands from inside subdirectories and created TypeScript config conflicts between Node and DOM types. We reversed this decision by creating explicit `backend/package.json` and `frontend/package.json` files with root workspace orchestration, enabling both standalone folder execution and unified root commands (`npm run dev`).
-
----
-
-## Decision 5: New Interviewer Auto-Assignment vs Empty Default State
-
-- **Chose:** Automatically assigning newly registered Interviewer accounts to 3 sample active candidates across open positions.
-- **Rejected:** Leaving newly created Interviewer accounts with an empty application queue until a recruiter manually discovers and assigns them.
-- **Why:** When evaluators, recruiters, or hiring managers test the self-service registration form as an Interviewer, starting with an empty screen prevents them from immediately testing the core interviewer workflows (reviewing candidate profiles, reading timeline history, and submitting interview feedback). Auto-assigning sample candidates ensures the workspace is immediately testable and functional while preserving all RBAC security boundaries.
+- **Chose:** A dedicated `AuthPage` requiring authentication with custom registration, role selection (Recruiter vs Interviewer), and 1-click demo logins.
+- **Rejected:** Automatically logging the user in as `recruiter@hireflow.test` on application startup.
+- **Why:** Real hiring pipelines require distinct security personas. Providing an explicit sign-in and registration screen allows reviewers to test both recruiter authority and restricted interviewer access from the initial load.
+- **Later reversed:** During early development, we configured `AuthContext` to automatically log in as `Sarah Connor (Recruiter)` whenever no active session was detected, bypassing the login screen to save time while testing dashboard features. We later reversed this decision because automatic login prevented users from testing self-service registration, selecting their role, or experiencing the interviewer's scoped candidate view without manually signing out first.
 
 ---
 
-## Decision 6: Server-Side Pipeline State Machine vs Client-Driven Stage Updates
+## Decision 5: Server-Side Pipeline State Machine vs Client-Driven Stage Updates
 
 - **Chose:** Centralized `PipelineService` with a strict linear progression state machine on the backend.
 - **Rejected:** Trusting the frontend to calculate valid stage transitions and sending updated stages via generic `PUT /api/applications/:id` requests.

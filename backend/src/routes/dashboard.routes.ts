@@ -4,6 +4,7 @@ import {
   ApiResponse,
   DashboardData,
   Stage,
+  Role,
   PROGRESSION_STAGES,
 } from '../types/index.js';
 import { query } from '../db/index.js';
@@ -37,53 +38,114 @@ dashboardRouter.get(
       const twelveWeeksAgo = new Date(startOfWeek.getTime() - 11 * 7 * 24 * 60 * 60 * 1000);
       const stalledCutoff = new Date(now.getTime() - STALLED_THRESHOLD_MS);
 
-      // 2. Query Headline Metrics
+      const isInterviewer = req.user?.role === Role.INTERVIEWER;
+      const userId = req.user?.id;
+
+      // 2. Query Headline Metrics (scoped to assigned candidates if interviewer)
+      const openPosQuery = isInterviewer
+        ? query<{ count: string }>(
+            `SELECT COUNT(DISTINCT a.job_opening_id)::text AS count 
+             FROM applications a 
+             JOIN application_interviewers ai ON a.id = ai.application_id 
+             JOIN job_openings j ON a.job_opening_id = j.id 
+             WHERE j.status = 'OPEN' AND ai.user_id = $1`,
+            [userId]
+          )
+        : query<{ count: string }>(`SELECT COUNT(*)::text AS count FROM job_openings WHERE status = 'OPEN'`);
+
+      const activeAppsQuery = isInterviewer
+        ? query<{ count: string }>(
+            `SELECT COUNT(*)::text AS count 
+             FROM applications a 
+             JOIN application_interviewers ai ON a.id = ai.application_id 
+             JOIN job_openings j ON a.job_opening_id = j.id 
+             WHERE j.status = 'OPEN' 
+               AND ai.user_id = $1 
+               AND a.current_stage IN ('APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER')`,
+            [userId]
+          )
+        : query<{ count: string }>(
+            `SELECT COUNT(*)::text AS count 
+             FROM applications a 
+             JOIN job_openings j ON a.job_opening_id = j.id 
+             WHERE j.status = 'OPEN' 
+               AND a.current_stage IN ('APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER')`
+          );
+
+      const hiresQuery = isInterviewer
+        ? query<{ count: string }>(
+            `SELECT COUNT(*)::text AS count 
+             FROM applications a 
+             JOIN application_interviewers ai ON a.id = ai.application_id 
+             JOIN job_openings j ON a.job_opening_id = j.id 
+             WHERE a.current_stage = 'HIRED' 
+               AND ai.user_id = $1 
+               AND a.stage_entered_at >= $2`,
+            [userId, startOfMonth.toISOString()]
+          )
+        : query<{ count: string }>(
+            `SELECT COUNT(*)::text AS count 
+             FROM applications a 
+             JOIN job_openings j ON a.job_opening_id = j.id 
+             WHERE a.current_stage = 'HIRED' 
+               AND a.stage_entered_at >= $1`,
+            [startOfMonth.toISOString()]
+          );
+
+      const interviewEventsQuery = isInterviewer
+        ? query<{ application_id: string }>(
+            `SELECT DISTINCT te.application_id 
+             FROM timeline_events te 
+             JOIN applications a ON te.application_id = a.id
+             JOIN application_interviewers ai ON a.id = ai.application_id
+             JOIN job_openings j ON a.job_opening_id = j.id
+             WHERE j.status = 'OPEN' 
+               AND ai.user_id = $1
+               AND te.event_type = 'STAGE_CHANGE' 
+               AND te.new_stage = 'INTERVIEW' 
+               AND te.created_at >= $2`,
+            [userId, startOfWeek.toISOString()]
+          )
+        : query<{ application_id: string }>(
+            `SELECT DISTINCT te.application_id 
+             FROM timeline_events te 
+             JOIN applications a ON te.application_id = a.id
+             JOIN job_openings j ON a.job_opening_id = j.id
+             WHERE j.status = 'OPEN' 
+               AND te.event_type = 'STAGE_CHANGE' 
+               AND te.new_stage = 'INTERVIEW' 
+               AND te.created_at >= $1`,
+            [startOfWeek.toISOString()]
+          );
+
+      const currentInterviewAppsQuery = isInterviewer
+        ? query<{ id: string }>(
+            `SELECT a.id 
+             FROM applications a 
+             JOIN application_interviewers ai ON a.id = ai.application_id 
+             JOIN job_openings j ON a.job_opening_id = j.id 
+             WHERE j.status = 'OPEN' 
+               AND ai.user_id = $1 
+               AND a.current_stage = 'INTERVIEW' 
+               AND a.stage_entered_at >= $2`,
+            [userId, startOfWeek.toISOString()]
+          )
+        : query<{ id: string }>(
+            `SELECT a.id 
+             FROM applications a 
+             JOIN job_openings j ON a.job_opening_id = j.id 
+             WHERE j.status = 'OPEN' 
+               AND a.current_stage = 'INTERVIEW' 
+               AND a.stage_entered_at >= $1`,
+            [startOfWeek.toISOString()]
+          );
+
       const [openPosRes, activeAppsRes, hiresRes, interviewEventsRes, currentInterviewAppsRes] = await Promise.all([
-        // Open positions
-        query<{ count: string }>(`SELECT COUNT(*)::text AS count FROM job_openings WHERE status = 'OPEN'`),
-
-        // Active applications in open positions
-        query<{ count: string }>(
-          `SELECT COUNT(*)::text AS count 
-           FROM applications a 
-           JOIN job_openings j ON a.job_opening_id = j.id 
-           WHERE j.status = 'OPEN' 
-             AND a.current_stage IN ('APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER')`
-        ),
-
-        // Hires this month
-        query<{ count: string }>(
-          `SELECT COUNT(*)::text AS count 
-           FROM applications a 
-           JOIN job_openings j ON a.job_opening_id = j.id 
-           WHERE a.current_stage = 'HIRED' 
-             AND a.stage_entered_at >= $1`,
-          [startOfMonth.toISOString()]
-        ),
-
-        // Interview transitions since start of week
-        query<{ application_id: string }>(
-          `SELECT DISTINCT te.application_id 
-           FROM timeline_events te 
-           JOIN applications a ON te.application_id = a.id
-           JOIN job_openings j ON a.job_opening_id = j.id
-           WHERE j.status = 'OPEN' 
-             AND te.event_type = 'STAGE_CHANGE' 
-             AND te.new_stage = 'INTERVIEW' 
-             AND te.created_at >= $1`,
-          [startOfWeek.toISOString()]
-        ),
-
-        // Applications in interview stage entered since start of week
-        query<{ id: string }>(
-          `SELECT a.id 
-           FROM applications a 
-           JOIN job_openings j ON a.job_opening_id = j.id 
-           WHERE j.status = 'OPEN' 
-             AND a.current_stage = 'INTERVIEW' 
-             AND a.stage_entered_at >= $1`,
-          [startOfWeek.toISOString()]
-        ),
+        openPosQuery,
+        activeAppsQuery,
+        hiresQuery,
+        interviewEventsQuery,
+        currentInterviewAppsQuery,
       ]);
 
       const openPositions = parseInt(openPosRes.rows[0]?.count || '0', 10);
@@ -96,26 +158,48 @@ dashboardRouter.get(
       currentInterviewAppsRes.rows.forEach((r) => interviewAppIds.add(r.id));
       const interviewsThisWeek = interviewAppIds.size;
 
-      // 3. Applications by Job Opening
-      const openingMetricsRes = await query<{
-        job_opening_id: string;
-        title: string;
-        department: string;
-        total_applications: string;
-        active_applications: string;
-      }>(
-        `SELECT 
-          j.id AS job_opening_id,
-          j.title,
-          j.department,
-          COUNT(a.id)::text AS total_applications,
-          COUNT(CASE WHEN a.current_stage IN ('APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER') THEN 1 END)::text AS active_applications
-        FROM job_openings j
-        LEFT JOIN applications a ON j.id = a.job_opening_id
-        WHERE j.status = 'OPEN'
-        GROUP BY j.id, j.title, j.department
-        ORDER BY COUNT(a.id) DESC, j.title ASC`
-      );
+      // 3. Applications by Job Opening (scoped to assigned candidates if interviewer)
+      const openingMetricsRes = isInterviewer
+        ? await query<{
+            job_opening_id: string;
+            title: string;
+            department: string;
+            total_applications: string;
+            active_applications: string;
+          }>(
+            `SELECT 
+              j.id AS job_opening_id,
+              j.title,
+              j.department,
+              COUNT(a.id)::text AS total_applications,
+              COUNT(CASE WHEN a.current_stage IN ('APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER') THEN 1 END)::text AS active_applications
+            FROM job_openings j
+            JOIN applications a ON j.id = a.job_opening_id
+            JOIN application_interviewers ai ON a.id = ai.application_id
+            WHERE j.status = 'OPEN' AND ai.user_id = $1
+            GROUP BY j.id, j.title, j.department
+            ORDER BY COUNT(a.id) DESC, j.title ASC`,
+            [userId]
+          )
+        : await query<{
+            job_opening_id: string;
+            title: string;
+            department: string;
+            total_applications: string;
+            active_applications: string;
+          }>(
+            `SELECT 
+              j.id AS job_opening_id,
+              j.title,
+              j.department,
+              COUNT(a.id)::text AS total_applications,
+              COUNT(CASE WHEN a.current_stage IN ('APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER') THEN 1 END)::text AS active_applications
+            FROM job_openings j
+            LEFT JOIN applications a ON j.id = a.job_opening_id
+            WHERE j.status = 'OPEN'
+            GROUP BY j.id, j.title, j.department
+            ORDER BY COUNT(a.id) DESC, j.title ASC`
+          );
 
       const byOpening = openingMetricsRes.rows.map((r) => ({
         jobOpeningId: r.job_opening_id,
@@ -125,19 +209,34 @@ dashboardRouter.get(
         activeApplications: parseInt(r.active_applications || '0', 10),
       }));
 
-      // 4. Applications by Stage
-      const stageCountsRes = await query<{
-        stage: Stage;
-        count: string;
-      }>(
-        `SELECT 
-          a.current_stage AS stage,
-          COUNT(*)::text AS count
-        FROM applications a
-        JOIN job_openings j ON a.job_opening_id = j.id
-        WHERE j.status = 'OPEN'
-        GROUP BY a.current_stage`
-      );
+      // 4. Applications by Stage (scoped to assigned candidates if interviewer)
+      const stageCountsRes = isInterviewer
+        ? await query<{
+            stage: Stage;
+            count: string;
+          }>(
+            `SELECT 
+              a.current_stage AS stage,
+              COUNT(*)::text AS count
+            FROM applications a
+            JOIN application_interviewers ai ON a.id = ai.application_id
+            JOIN job_openings j ON a.job_opening_id = j.id
+            WHERE j.status = 'OPEN' AND ai.user_id = $1
+            GROUP BY a.current_stage`,
+            [userId]
+          )
+        : await query<{
+            stage: Stage;
+            count: string;
+          }>(
+            `SELECT 
+              a.current_stage AS stage,
+              COUNT(*)::text AS count
+            FROM applications a
+            JOIN job_openings j ON a.job_opening_id = j.id
+            WHERE j.status = 'OPEN'
+            GROUP BY a.current_stage`
+          );
 
       const stageCountsMap: Record<string, number> = {};
       let grandTotalApps = 0;
@@ -166,16 +265,28 @@ dashboardRouter.get(
         };
       });
 
-      // 5. Applications Received Per Week over the Last Quarter (12-Week Rolling Trend)
-      const weeklyAppsRes = await query<{ applied_date: Date | string }>(
-        `SELECT a.applied_date 
-         FROM applications a 
-         JOIN job_openings j ON a.job_opening_id = j.id 
-         WHERE j.status = 'OPEN' 
-           AND a.applied_date >= $1 
-         ORDER BY a.applied_date ASC`,
-        [twelveWeeksAgo.toISOString()]
-      );
+      // 5. Applications Received Per Week over the Last Quarter (scoped if interviewer)
+      const weeklyAppsRes = isInterviewer
+        ? await query<{ applied_date: Date | string }>(
+            `SELECT a.applied_date 
+             FROM applications a 
+             JOIN application_interviewers ai ON a.id = ai.application_id
+             JOIN job_openings j ON a.job_opening_id = j.id 
+             WHERE j.status = 'OPEN' 
+               AND ai.user_id = $1
+               AND a.applied_date >= $2 
+             ORDER BY a.applied_date ASC`,
+            [userId, twelveWeeksAgo.toISOString()]
+          )
+        : await query<{ applied_date: Date | string }>(
+            `SELECT a.applied_date 
+             FROM applications a 
+             JOIN job_openings j ON a.job_opening_id = j.id 
+             WHERE j.status = 'OPEN' 
+               AND a.applied_date >= $1 
+             ORDER BY a.applied_date ASC`,
+            [twelveWeeksAgo.toISOString()]
+          );
 
       // Build 12 weekly buckets from twelveWeeksAgo to current week
       const weeklyTrend = [];
@@ -199,28 +310,52 @@ dashboardRouter.get(
         });
       }
 
-      // 6. Stalled Applications Summary
-      const stalledAppsRes = await query<{
-        id: string;
-        current_stage: Stage;
-        stage_entered_at: Date | string;
-      }>(
-        `SELECT 
-          a.id,
-          a.current_stage,
-          a.stage_entered_at
-        FROM applications a
-        JOIN job_openings j ON a.job_opening_id = j.id
-        LEFT JOIN stalled_alert_dismissals sad 
-          ON sad.application_id = a.id 
-         AND sad.stage = a.current_stage 
-         AND sad.stage_entered_at = a.stage_entered_at
-        WHERE j.status = 'OPEN'
-          AND a.current_stage IN ('APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER')
-          AND a.stage_entered_at <= $1
-          AND sad.id IS NULL`,
-        [stalledCutoff.toISOString()]
-      );
+      // 6. Stalled Applications Summary (scoped if interviewer)
+      const stalledAppsRes = isInterviewer
+        ? await query<{
+            id: string;
+            current_stage: Stage;
+            stage_entered_at: Date | string;
+          }>(
+            `SELECT 
+              a.id,
+              a.current_stage,
+              a.stage_entered_at
+            FROM applications a
+            JOIN application_interviewers ai ON a.id = ai.application_id
+            JOIN job_openings j ON a.job_opening_id = j.id
+            LEFT JOIN stalled_alert_dismissals sad 
+              ON sad.application_id = a.id 
+             AND sad.stage = a.current_stage 
+             AND sad.stage_entered_at = a.stage_entered_at
+            WHERE j.status = 'OPEN'
+              AND ai.user_id = $1
+              AND a.current_stage IN ('APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER')
+              AND a.stage_entered_at <= $2
+              AND sad.id IS NULL`,
+            [userId, stalledCutoff.toISOString()]
+          )
+        : await query<{
+            id: string;
+            current_stage: Stage;
+            stage_entered_at: Date | string;
+          }>(
+            `SELECT 
+              a.id,
+              a.current_stage,
+              a.stage_entered_at
+            FROM applications a
+            JOIN job_openings j ON a.job_opening_id = j.id
+            LEFT JOIN stalled_alert_dismissals sad 
+              ON sad.application_id = a.id 
+             AND sad.stage = a.current_stage 
+             AND sad.stage_entered_at = a.stage_entered_at
+            WHERE j.status = 'OPEN'
+              AND a.current_stage IN ('APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER')
+              AND a.stage_entered_at <= $1
+              AND sad.id IS NULL`,
+            [stalledCutoff.toISOString()]
+          );
 
       const stalledByStage: Record<string, number> = {};
       let longestDays = 0;

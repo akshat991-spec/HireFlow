@@ -187,4 +187,66 @@ describe('Recruiter Dashboard Real PostgreSQL Metrics', () => {
     expect(res.status).toBe(401);
     expect(res.body.success).toBe(false);
   });
+
+  it('6. Scopes dashboard metrics strictly to assigned candidates when user is an interviewer', async () => {
+    // Seed interviewer user
+    const interviewerUser = {
+      id: 'usr_interviewer_test',
+      name: 'Test Interviewer',
+      email: 'interviewer_test@hireflow.test',
+      role: Role.INTERVIEWER,
+    };
+    const passwordHash = await AuthService.hashPassword('password123');
+    memDb.public.none(
+      `INSERT INTO users (id, name, email, password_hash, role)
+       VALUES ('${interviewerUser.id}', '${interviewerUser.name}', '${interviewerUser.email}', '${passwordHash}', '${interviewerUser.role}');`
+    );
+
+    // Seed 3 applications across 2 openings
+    // App 1: In job_open_1, ASSIGNED to interviewerUser
+    memDb.public.none(
+      `INSERT INTO applications (id, job_opening_id, candidate_name, candidate_email, source, current_stage, applied_date, stage_entered_at)
+       VALUES ('app_assigned_1', 'job_open_1', 'Assigned Candidate', 'assigned@example.com', 'LinkedIn', 'INTERVIEW', NOW(), NOW());`
+    );
+    memDb.public.none(
+      `INSERT INTO application_interviewers (application_id, user_id, assigned_at)
+       VALUES ('app_assigned_1', '${interviewerUser.id}', NOW());`
+    );
+
+    // App 2: In job_open_1, NOT ASSIGNED
+    memDb.public.none(
+      `INSERT INTO applications (id, job_opening_id, candidate_name, candidate_email, source, current_stage, applied_date, stage_entered_at)
+       VALUES ('app_unassigned_1', 'job_open_1', 'Other Candidate', 'other@example.com', 'Referral', 'SCREENING', NOW(), NOW());`
+    );
+
+    // App 3: In job_open_2, NOT ASSIGNED
+    memDb.public.none(
+      `INSERT INTO applications (id, job_opening_id, candidate_name, candidate_email, source, current_stage, applied_date, stage_entered_at)
+       VALUES ('app_unassigned_2', 'job_open_2', 'Design Candidate', 'design@example.com', 'Direct', 'APPLIED', NOW(), NOW());`
+    );
+
+    const interviewerToken = AuthService.generateToken(interviewerUser);
+
+    const res = await request(app)
+      .get('/api/dashboard/metrics')
+      .set('Authorization', `Bearer ${interviewerToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+
+    // Interviewer must ONLY see their 1 assigned candidate
+    expect(res.body.data.headline.activeApplications).toBe(1);
+    // Interviewer must ONLY see the 1 opening where they have an assigned candidate
+    expect(res.body.data.headline.openPositions).toBe(1);
+    // Openings list should only contain job_open_1
+    expect(res.body.data.byOpening.length).toBe(1);
+    expect(res.body.data.byOpening[0].jobOpeningId).toBe('job_open_1');
+    expect(res.body.data.byOpening[0].activeApplications).toBe(1);
+
+    // Stage counts should only count their assigned candidate (1 in INTERVIEW)
+    const interviewStage = res.body.data.byStage.find((s: any) => s.stage === Stage.INTERVIEW);
+    expect(interviewStage?.count).toBe(1);
+    const appliedStage = res.body.data.byStage.find((s: any) => s.stage === Stage.APPLIED);
+    expect(appliedStage?.count).toBe(0);
+  });
 });

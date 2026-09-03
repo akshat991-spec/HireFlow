@@ -66,6 +66,8 @@ export const DashboardPage: React.FC = () => {
       }
       if (alertsRes && alertsRes.success && alertsRes.data?.alerts) {
         setStalledAlerts(alertsRes.data.alerts);
+      } else {
+        setStalledAlerts([]);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load dashboard metrics');
@@ -88,9 +90,11 @@ export const DashboardPage: React.FC = () => {
       {/* Page Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 className="page-title">Recruitment Dashboard</h1>
+          <h1 className="page-title">{isRecruiter ? 'Recruitment Dashboard' : 'Interviewer Workspace'}</h1>
           <div className="page-subtitle-tracked">
-            REAL-TIME HIRING METRICS & WORKFLOW OVERVIEW
+            {isRecruiter
+              ? 'REAL-TIME HIRING METRICS & WORKFLOW OVERVIEW'
+              : 'YOUR ASSIGNED CANDIDATE PANEL, EVALUATIONS & INTERVIEWS'}
           </div>
         </div>
 
@@ -138,16 +142,16 @@ export const DashboardPage: React.FC = () => {
 
       {/* 1. Primary Recruitment KPIs */}
       <div className="kpi-grid">
-        {/* Open Positions */}
+        {/* Open Positions / Assigned Roles */}
         <NavLink
-          to="/openings"
+          to={isRecruiter ? "/openings" : "/candidates"}
           style={{ textDecoration: 'none', color: 'inherit' }}
           className="card"
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Open Positions
+                {isRecruiter ? 'Open Positions' : 'Assigned Roles'}
               </div>
               <div id="metric-openings" style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '0.35rem' }}>
                 {loading ? '—' : headline?.openPositions ?? 0}
@@ -170,12 +174,12 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', color: '#d97706', marginTop: '0.75rem', fontWeight: 600 }}>
-            <span>Active openings directory</span>
+            <span>{isRecruiter ? 'Active openings directory' : 'Roles with assigned candidates'}</span>
             <ArrowUpRight size={13} />
           </div>
         </NavLink>
 
-        {/* Active Candidates */}
+        {/* Active Candidates / My Candidates */}
         <NavLink
           to="/candidates"
           style={{ textDecoration: 'none', color: 'inherit' }}
@@ -184,7 +188,7 @@ export const DashboardPage: React.FC = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Active Candidates
+                {isRecruiter ? 'Active Candidates' : 'My Candidates'}
               </div>
               <div id="metric-active" style={{ fontSize: '2.2rem', fontWeight: 800, color: '#0066ff', marginTop: '0.35rem' }}>
                 {loading ? '—' : headline?.activeApplications ?? 0}
@@ -207,12 +211,12 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', color: '#0066ff', marginTop: '0.75rem', fontWeight: 600 }}>
-            <span>View candidate pool</span>
+            <span>{isRecruiter ? 'View candidate pool' : 'Review assigned applications'}</span>
             <ArrowUpRight size={13} />
           </div>
         </NavLink>
 
-        {/* Interviews This Week */}
+        {/* Interviews This Week / My Interviews */}
         <NavLink
           to="/candidates?stage=INTERVIEW"
           style={{ textDecoration: 'none', color: 'inherit' }}
@@ -222,7 +226,7 @@ export const DashboardPage: React.FC = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Interviews This Week
+                {isRecruiter ? 'Interviews This Week' : 'My Interviews'}
               </div>
               <div id="metric-interviews" style={{ fontSize: '2.2rem', fontWeight: 800, color: '#0284c7', marginTop: '0.35rem' }}>
                 {loading ? '—' : headline?.interviewsThisWeek ?? 0}
@@ -245,12 +249,12 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', color: '#0284c7', marginTop: '0.75rem', fontWeight: 600 }}>
-            <span>Scheduled evaluations</span>
+            <span>{isRecruiter ? 'Scheduled evaluations' : 'Panel candidates in interview'}</span>
             <ArrowUpRight size={13} />
           </div>
         </NavLink>
 
-        {/* Hires This Month */}
+        {/* Hires This Month / Panel Hires */}
         <NavLink
           to="/candidates?stage=HIRED"
           style={{ textDecoration: 'none', color: 'inherit' }}
@@ -260,7 +264,7 @@ export const DashboardPage: React.FC = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Hires This Month
+                {isRecruiter ? 'Hires This Month' : 'Panel Hires'}
               </div>
               <div id="metric-hires" style={{ fontSize: '2.2rem', fontWeight: 800, color: '#059669', marginTop: '0.35rem' }}>
                 {loading ? '—' : headline?.hiresThisMonth ?? 0}
@@ -283,7 +287,7 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', color: '#059669', marginTop: '0.75rem', fontWeight: 600 }}>
-            <span>Completed placements</span>
+            <span>{isRecruiter ? 'Completed placements' : 'Assigned candidates hired'}</span>
             <ArrowUpRight size={13} />
           </div>
         </NavLink>
@@ -297,14 +301,14 @@ export const DashboardPage: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
               <Layers size={18} color="#0066ff" />
               <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                Candidates by Recruitment Stage
+                {isRecruiter ? 'Candidates by Recruitment Stage' : 'Assigned Candidates by Stage'}
               </h2>
             </div>
             <NavLink
               to="/candidates"
               style={{ fontSize: '0.8rem', color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}
             >
-              View directory
+              {isRecruiter ? 'View directory' : 'View my applications'}
             </NavLink>
           </div>
 
@@ -392,7 +396,7 @@ export const DashboardPage: React.FC = () => {
             >
               {data?.weeklyTrend.map((week, idx) => {
                 const barHeightPct = Math.max(10, Math.round((week.count / maxWeeklyCount) * 100));
-                const dayNum = week.weekLabel.split(' ')[1] || `${idx + 1}`;
+                const isCurrentWeek = idx === (data?.weeklyTrend.length ?? 0) - 1;
 
                 return (
                   <div
@@ -416,16 +420,48 @@ export const DashboardPage: React.FC = () => {
                         width: '100%',
                         maxWidth: '28px',
                         height: `${barHeightPct}%`,
-                        backgroundColor: week.count > 0 ? '#0066ff' : '#e2e8f0',
-                        borderRadius: '4px 4px 0 0',
-                        transition: 'height 250ms ease',
+                        backgroundColor: isCurrentWeek
+                          ? '#0066ff'
+                          : week.count > 0
+                          ? '#93c5fd'
+                          : '#e2e8f0',
+                        borderRadius: '3px 3px 0 0',
+                        transition: 'height 0.3s ease, background-color var(--transition-fast)',
                       }}
                     />
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Numerical Day Labels */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                paddingTop: '0.35rem',
+                borderTop: '1px solid var(--border-color)',
+                gap: '6px',
+              }}
+            >
+              {data?.weeklyTrend.map((week, idx) => {
+                const dayNum = week.weekLabel.split(' ')[1];
+                const isCurrentWeek = idx === data.weeklyTrend.length - 1;
+
+                return (
+                  <div
+                    key={idx}
+                    style={{
+                      flex: 1,
+                      textAlign: 'center',
+                    }}
+                  >
                     <span
                       style={{
-                        fontSize: '0.65rem',
-                        color: 'var(--text-muted)',
-                        fontWeight: 500,
+                        fontSize: '0.68rem',
+                        color: isCurrentWeek ? '#0066ff' : 'var(--text-muted)',
+                        fontWeight: isCurrentWeek ? 700 : 500,
+                        display: 'block',
                       }}
                     >
                       {dayNum}
@@ -434,68 +470,46 @@ export const DashboardPage: React.FC = () => {
                 );
               })}
             </div>
-
-            {/* Distinct Month Axis */}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                paddingTop: '0.35rem',
-                borderTop: '1px solid #f1f5f9',
-                gap: '6px',
-              }}
-            >
-              {data?.weeklyTrend.map((week, idx, arr) => {
-                const currentMonth = week.weekLabel.split(' ')[0];
-                const prevMonth = idx > 0 ? arr[idx - 1].weekLabel.split(' ')[0] : null;
-                const isFirstWeekOfMonth = currentMonth !== prevMonth;
-
-                return (
-                  <div
-                    key={idx}
-                    style={{
-                      flex: 1,
-                      textAlign: 'center',
-                      fontSize: '0.7rem',
-                      fontWeight: 700,
-                      color: isFirstWeekOfMonth ? '#334155' : 'transparent',
-                      userSelect: 'none',
-                    }}
-                  >
-                    {isFirstWeekOfMonth ? currentMonth : ''}
-                  </div>
-                );
-              })}
-            </div>
           </div>
           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-            Weekly candidate applications received across open positions
+            {isRecruiter
+              ? 'Weekly candidate applications received across open positions'
+              : 'Weekly applications received for your assigned candidate positions'}
           </div>
         </div>
       </div>
 
       {/* 3. Bottom Grid: Openings Overview + Actionable Attention Alerts */}
       <div className="dashboard-two-col">
-        {/* Applications by Job Opening — Clean, non-repetitive presentation */}
+        {/* Applications by Job Opening */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Briefcase size={18} color="#0066ff" />
               <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                Active Job Openings
+                {isRecruiter ? 'Active Job Openings' : 'Your Assigned Job Roles'}
               </h2>
             </div>
-            <NavLink
-              to="/openings"
-              style={{ fontSize: '0.8rem', color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}
-            >
-              Manage Openings
-            </NavLink>
+            {isRecruiter ? (
+              <NavLink
+                to="/openings"
+                style={{ fontSize: '0.8rem', color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}
+              >
+                Manage Openings
+              </NavLink>
+            ) : (
+              <NavLink
+                to="/candidates"
+                style={{ fontSize: '0.8rem', color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}
+              >
+                View Candidates
+              </NavLink>
+            )}
           </div>
 
           {data?.byOpening.length === 0 ? (
             <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-              No open job positions available.
+              {isRecruiter ? 'No open job positions available.' : 'No candidates currently assigned to your panel.'}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
@@ -563,13 +577,13 @@ export const DashboardPage: React.FC = () => {
           )}
         </div>
 
-        {/* Actionable Attention Alerts (Candidates Exceeding Inactivity Threshold) */}
+        {/* Actionable Attention Alerts */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
               <Clock size={18} color="#dc2626" />
               <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                Candidates Requiring Attention
+                {isRecruiter ? 'Candidates Requiring Attention' : 'Your Panel Attention Items'}
               </h2>
             </div>
             {isRecruiter && (
@@ -582,11 +596,7 @@ export const DashboardPage: React.FC = () => {
             )}
           </div>
 
-          {!isRecruiter ? (
-            <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-              Inactivity and review alerts are managed by recruiting team members.
-            </div>
-          ) : stalledAlerts.length === 0 ? (
+          {stalledAlerts.length === 0 ? (
             <div
               style={{
                 padding: '2.5rem 1.5rem',
@@ -602,23 +612,27 @@ export const DashboardPage: React.FC = () => {
             >
               <CheckCircle2 size={32} color="#059669" />
               <div style={{ fontWeight: 700, color: '#047857', fontSize: '0.95rem' }}>
-                All Candidates on Schedule
+                {isRecruiter ? 'All Candidates on Schedule' : 'All Assigned Candidates on Schedule'}
               </div>
               <div style={{ fontSize: '0.8rem', color: '#065f46', maxWidth: '320px' }}>
-                Zero applications have exceeded the 10-day inactivity threshold in their current stage.
+                {isRecruiter
+                  ? 'Zero applications have exceeded the 10-day inactivity threshold in their current stage.'
+                  : 'Zero candidates on your panel have exceeded the 10-day inactivity threshold.'}
               </div>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                Applications waiting over 10 days without stage movement:
+                {isRecruiter
+                  ? 'Applications waiting over 10 days without stage movement:'
+                  : 'Your assigned candidates waiting over 10 days without stage movement:'}
               </div>
 
               {/* Direct candidate items instead of repetitive aggregate numbers */}
               {stalledAlerts.slice(0, 3).map((alert) => (
                 <NavLink
                   key={alert.applicationId}
-                  to="/alerts"
+                  to={isRecruiter ? "/alerts" : "/candidates"}
                   style={{
                     display: 'flex',
                     alignItems: 'center',

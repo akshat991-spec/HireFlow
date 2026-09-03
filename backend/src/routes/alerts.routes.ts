@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate, requireRecruiter } from '../middleware/auth.middleware.js';
-import { ApiResponse, Stage, StalledAlert, UserPublic } from '../types/index.js';
+import { ApiResponse, Stage, StalledAlert, UserPublic, Role } from '../types/index.js';
 import { NotFoundError } from '../errors/AppError.js';
 import { query } from '../db/index.js';
 
@@ -32,30 +32,30 @@ alertsRouter.get(
         stage_entered_at: Date | string;
         source: string;
       }>(
-        `SELECT 
-          a.id AS application_id,
-          a.candidate_name,
-          a.candidate_email,
-          a.job_opening_id,
-          j.title AS job_title,
-          j.department,
-          a.current_stage,
-          a.applied_date,
-          a.stage_entered_at,
-          a.source
-        FROM applications a
-        JOIN job_openings j ON a.job_opening_id = j.id
-        LEFT JOIN stalled_alert_dismissals sad 
-          ON sad.application_id = a.id 
-         AND sad.stage = a.current_stage 
-         AND sad.stage_entered_at = a.stage_entered_at
-        WHERE j.status = 'OPEN'
-          AND a.current_stage IN ('APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER')
-          AND a.stage_entered_at <= $1
-          AND sad.id IS NULL
-        ORDER BY a.stage_entered_at ASC`,
-        [cutoffDate.toISOString()]
-      );
+            `SELECT 
+              a.id AS application_id,
+              a.candidate_name,
+              a.candidate_email,
+              a.job_opening_id,
+              j.title AS job_title,
+              j.department,
+              a.current_stage,
+              a.applied_date,
+              a.stage_entered_at,
+              a.source
+            FROM applications a
+            JOIN job_openings j ON a.job_opening_id = j.id
+            LEFT JOIN stalled_alert_dismissals sad 
+              ON sad.application_id = a.id 
+             AND sad.stage = a.current_stage 
+             AND sad.stage_entered_at = a.stage_entered_at
+            WHERE j.status = 'OPEN'
+              AND a.current_stage IN ('APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER')
+              AND a.stage_entered_at <= $1
+              AND sad.id IS NULL
+            ORDER BY a.stage_entered_at ASC`,
+            [cutoffDate.toISOString()]
+          );
 
       // Collect application IDs to fetch panel interviewers
       const appIds = result.rows.map((r) => r.application_id);

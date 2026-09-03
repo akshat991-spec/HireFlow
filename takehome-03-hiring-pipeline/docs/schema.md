@@ -4,145 +4,247 @@ This document describes the PostgreSQL relational database model for the **HireF
 
 ---
 
-## 1. Table-by-Table Schema Definition
+## 1. Entity-Relationship Diagram
 
-### `users`
-Stores system accounts with credentials and role definitions for authorization.
+![HireFlow Schema Diagram](./schema_diagram.png)
 
-| Column | Type | Nullable | Default | Constraints & Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `id` | `VARCHAR(36)` | No | — | Primary Key (UUID) |
-| `name` | `VARCHAR(255)` | No | — | User's full display name |
-| `email` | `VARCHAR(255)` | No | — | Unique identifier / login email (`UNIQUE`) |
-| `password_hash` | `VARCHAR(255)` | No | — | Securely hashed password (e.g. bcrypt) |
-| `role` | `VARCHAR(32)` | No | — | `CHECK (role IN ('RECRUITER', 'INTERVIEWER'))` |
-| `created_at` | `TIMESTAMPTZ` | No | `CURRENT_TIMESTAMP` | Account creation timestamp |
-| `updated_at` | `TIMESTAMPTZ` | No | `CURRENT_TIMESTAMP` | Timestamp of last user profile update |
+```mermaid
+erDiagram
+    users ||--o{ applications : "creates / manages"
+    users ||--o{ timeline_events : "actor"
+    users ||--o{ stalled_alert_dismissals : "dismissed_by"
+    users ||--o{ application_interviewers : "assigned_interviewer"
+    job_openings ||--o{ applications : "contains"
+    applications ||--o{ application_interviewers : "has_panel"
+    applications ||--o{ timeline_events : "tracks_history"
+    applications ||--o{ stalled_alert_dismissals : "has_dismissals"
 
----
+    users {
+        varchar id PK
+        varchar name
+        varchar email UK
+        varchar password_hash
+        varchar role
+        timestamptz created_at
+        timestamptz updated_at
+    }
 
-### `job_openings`
-Stores positions opened by recruiters with status tracking.
+    job_openings {
+        varchar id PK
+        varchar title
+        varchar department
+        text description
+        varchar status
+        timestamptz created_at
+        timestamptz updated_at
+    }
 
-| Column | Type | Nullable | Default | Constraints & Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `id` | `VARCHAR(36)` | No | — | Primary Key (UUID) |
-| `title` | `VARCHAR(255)` | No | — | Job title (e.g. "Senior Backend Engineer") |
-| `department` | `VARCHAR(255)` | No | — | Department (e.g. "Engineering", "Sales") |
-| `description` | `TEXT` | No | — | Detailed job description and requirements |
-| `status` | `VARCHAR(32)` | No | `'OPEN'` | `CHECK (status IN ('OPEN', 'ARCHIVED'))` |
-| `created_at` | `TIMESTAMPTZ` | No | `CURRENT_TIMESTAMP` | Opening creation timestamp |
-| `updated_at` | `TIMESTAMPTZ` | No | `CURRENT_TIMESTAMP` | Opening modification timestamp |
+    applications {
+        varchar id PK
+        varchar job_opening_id FK
+        varchar candidate_name
+        varchar candidate_email
+        varchar source
+        text notes
+        varchar current_stage
+        timestamptz applied_date
+        timestamptz stage_entered_at
+        varchar rejected_from_stage
+        timestamptz created_at
+        timestamptz updated_at
+    }
 
----
+    application_interviewers {
+        varchar application_id PK,FK
+        varchar user_id PK,FK
+        timestamptz assigned_at
+    }
 
-### `applications`
-Core entity tracking candidate applications, stage progression, and rejection/restoration state.
+    timeline_events {
+        varchar id PK
+        varchar application_id FK
+        varchar event_type
+        varchar actor_id FK
+        varchar old_stage
+        varchar new_stage
+        text note_content
+        timestamptz created_at
+    }
 
-| Column | Type | Nullable | Default | Constraints & Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `id` | `VARCHAR(36)` | No | — | Primary Key (UUID) |
-| `job_opening_id` | `VARCHAR(36)` | No | — | Foreign Key → `job_openings(id)` (`ON DELETE RESTRICT`) |
-| `candidate_name` | `VARCHAR(255)` | No | — | Full name of the candidate |
-| `candidate_email` | `VARCHAR(255)` | No | — | Email address of the candidate |
-| `source` | `VARCHAR(255)` | No | — | Application source (e.g. "LinkedIn", "Referral", "Direct") |
-| `notes` | `TEXT` | Yes | `NULL` | Optional recruiter/application notes |
-| `current_stage` | `VARCHAR(32)` | No | — | `CHECK (current_stage IN ('APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER', 'HIRED', 'REJECTED'))` |
-| `applied_date` | `TIMESTAMPTZ` | No | `CURRENT_TIMESTAMP` | Initial date application was received |
-| `stage_entered_at` | `TIMESTAMPTZ` | No | `CURRENT_TIMESTAMP` | Timestamp when application entered `current_stage` |
-| `rejected_from_stage` | `VARCHAR(32)` | Yes | `NULL` | `CHECK (rejected_from_stage IS NULL OR rejected_from_stage IN ('APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER', 'HIRED'))` |
-| `created_at` | `TIMESTAMPTZ` | No | `CURRENT_TIMESTAMP` | Record creation timestamp |
-| `updated_at` | `TIMESTAMPTZ` | No | `CURRENT_TIMESTAMP` | Last updated timestamp |
-
-**Check Constraint**:
-* `check_rejected_origin`: Ensures that if `current_stage = 'REJECTED'`, `rejected_from_stage` is non-null, guaranteeing that a candidate can always be reinstated back to their exact prior stage.
-
----
-
-### `application_interviewers`
-Junction table managing many-to-many assignments between applications and interviewer users.
-
-| Column | Type | Nullable | Default | Constraints & Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `application_id` | `VARCHAR(36)` | No | — | Foreign Key → `applications(id)` (`ON DELETE CASCADE`) |
-| `user_id` | `VARCHAR(36)` | No | — | Foreign Key → `users(id)` (`ON DELETE CASCADE`) |
-| `assigned_at` | `TIMESTAMPTZ` | No | `CURRENT_TIMESTAMP` | Assignment timestamp |
-
-**Primary Key**: `(application_id, user_id)` (Composite Primary Key).
-
----
-
-### `timeline_events`
-Append-only immutable audit trail recording lifecycle events, stage transitions, rejections, reinstatements, and interviewer feedback.
-
-| Column | Type | Nullable | Default | Constraints & Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `id` | `VARCHAR(36)` | No | — | Primary Key (UUID) |
-| `application_id` | `VARCHAR(36)` | No | — | Foreign Key → `applications(id)` (`ON DELETE CASCADE`) |
-| `event_type` | `VARCHAR(64)` | No | — | `CHECK (event_type IN ('APPLICATION_CREATED', 'STAGE_CHANGE', 'REJECTION', 'REINSTATEMENT', 'INTERVIEWER_FEEDBACK', 'INTERVIEWER_ASSIGNED', 'INTERVIEWER_REMOVED'))` |
-| `actor_id` | `VARCHAR(36)` | Yes | `NULL` | Foreign Key → `users(id)` (`ON DELETE SET NULL`) |
-| `old_stage` | `VARCHAR(32)` | Yes | `NULL` | Previous stage before transition |
-| `new_stage` | `VARCHAR(32)` | Yes | `NULL` | Next stage after transition |
-| `note_content` | `TEXT` | Yes | `NULL` | Feedback text or note payload |
-| `created_at` | `TIMESTAMPTZ` | No | `CURRENT_TIMESTAMP` | Event timestamp |
+    stalled_alert_dismissals {
+        varchar id PK
+        varchar application_id FK
+        varchar user_id FK
+        varchar stage
+        timestamptz stage_entered_at
+        timestamptz dismissed_at
+    }
+```
 
 ---
 
-### `stalled_alert_dismissals`
-Tracks recruiter dismissals for stalled applications associated with specific stage entry timestamps.
+## 2. Table Definitions
 
-| Column | Type | Nullable | Default | Constraints & Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `id` | `VARCHAR(36)` | No | — | Primary Key (UUID) |
-| `application_id` | `VARCHAR(36)` | No | — | Foreign Key → `applications(id)` (`ON DELETE CASCADE`) |
-| `user_id` | `VARCHAR(36)` | No | — | Foreign Key → `users(id)` (`ON DELETE CASCADE`) |
-| `stage` | `VARCHAR(32)` | No | — | The stage in which the application stalled |
-| `stage_entered_at` | `TIMESTAMPTZ` | No | — | Timestamp of entry into that stage |
-| `dismissed_at` | `TIMESTAMPTZ` | No | `CURRENT_TIMESTAMP` | When recruiter dismissed the alert |
+## Table `users`
 
-**Unique Constraint**: `UNIQUE (application_id, stage, stage_entered_at)` ensures dismissal applies only to that particular stalled period. If the candidate advances to a new stage and subsequently stalls, a new alert is generated.
+### Columns
 
----
-
-## 2. Relationships Overview
-
-* **One-to-Many**:
-  * `job_openings` → `applications`: One job opening has many applications.
-  * `users` (actors) → `timeline_events`: One user can produce many timeline events.
-  * `applications` → `timeline_events`: One application has many append-only timeline events.
-  * `applications` → `stalled_alert_dismissals`: One application has many historical dismissals across different stages.
-* **Many-to-Many**:
-  * `applications` ↔ `users`: Modeled via `application_interviewers` table (`application_id`, `user_id`). Only users with `role = 'INTERVIEWER'` can be assigned.
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `varchar` | Primary |
+| `name` | `varchar` |  |
+| `email` | `varchar` |  Unique |
+| `password_hash` | `varchar` |  |
+| `role` | `varchar` |  |
+| `created_at` | `timestamptz` |  |
+| `updated_at` | `timestamptz` |  |
 
 ---
 
-## 3. Enforced Constraints: Database vs. Application Layer
+## Table `job_openings`
 
-### Enforced in Database (DDL Level):
-1. **Referential Integrity**: Foreign keys with `ON DELETE RESTRICT` on job openings (preventing accidental deletion of openings with candidates) and `ON DELETE CASCADE` on child junction tables.
-2. **State Validity**: `CHECK` constraints on `role`, `status`, `current_stage`, `rejected_from_stage`, and `event_type`.
-3. **Rejection State Preservation**: `check_rejected_origin` constraint ensuring `rejected_from_stage` is not null when `current_stage = 'REJECTED'`.
-4. **Uniqueness**: Unique constraints on `users(email)` and composite unique on `(application_id, stage, stage_entered_at)` for stalled dismissals.
-5. **Composite Primary Keys**: `(application_id, user_id)` preventing duplicate panel assignments.
+### Columns
 
-### Enforced in Application Code:
-1. **Strict Stage Transition Rules**: Legal linear order (`APPLIED → SCREENING → INTERVIEW → OFFER → HIRED`) and prevention of skipping forward (e.g. APPLIED → OFFER) with explanatory error messages.
-2. **Role-Based Authorization (RBAC)**: Ensuring only recruiters can advance stages or create openings, and only interviewers can view assigned candidates and submit feedback.
-3. **Panel Role Validation**: Validating that any `user_id` assigned in `application_interviewers` actually has `role = 'INTERVIEWER'` prior to insertion.
-4. **Append-Only Immutability Enforcement**: Restricting any endpoint access that would modify or delete rows in `timeline_events`.
-
----
-
-## 4. Deliberate Denormalization Choices
-
-* **`rejected_from_stage` in `applications`**: Stored directly on the application record alongside `current_stage` rather than requiring a sequential scan of `timeline_events` to determine which stage a rejected candidate was in prior to rejection.
-* **`stage_entered_at` in `applications`**: Stored on the application record to allow instantaneous O(1) indexed queries for 10-day stalled candidate detection without aggregate `MAX(created_at)` queries on `timeline_events`.
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `varchar` | Primary |
+| `title` | `varchar` |  |
+| `department` | `varchar` |  |
+| `description` | `text` |  |
+| `status` | `varchar` |  |
+| `created_at` | `timestamptz` |  |
+| `updated_at` | `timestamptz` |  |
 
 ---
 
-## 5. Scalability Considerations (100x Data Analysis)
+## Table `applications`
 
-At 100x current data scale (e.g., millions of applications and tens of millions of timeline events):
-1. **`timeline_events` Table Growth**: The append-only timeline table will grow the fastest. We have indexed `(application_id, created_at ASC)`. At 100x scale, table partitioning by range on `created_at` (e.g. monthly partitions) would be introduced.
-2. **Candidate Search & Filter Queries**: Multi-attribute filtering (opening, stage, source, full-text search) will benefit from composite indexes and PostgreSQL GIN indexes on `candidate_name` and `candidate_email` using `pg_trgm`.
-3. **Stalled Application Calculations**: Currently indexed by `stage_entered_at` and `current_stage`. At 100x scale, a partial index `WHERE current_stage NOT IN ('HIRED', 'REJECTED')` optimizes stalled detection without scanning terminal applications.
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `varchar` | Primary |
+| `job_opening_id` | `varchar` |  |
+| `candidate_name` | `varchar` |  |
+| `candidate_email` | `varchar` |  |
+| `source` | `varchar` |  |
+| `notes` | `text` |  Nullable |
+| `current_stage` | `varchar` |  |
+| `applied_date` | `timestamptz` |  |
+| `stage_entered_at` | `timestamptz` |  |
+| `rejected_from_stage` | `varchar` |  Nullable |
+| `created_at` | `timestamptz` |  |
+| `updated_at` | `timestamptz` |  |
+
+---
+
+## Table `application_interviewers`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `application_id` | `varchar` | Primary |
+| `user_id` | `varchar` | Primary |
+| `assigned_at` | `timestamptz` |  |
+
+---
+
+## Table `timeline_events`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `varchar` | Primary |
+| `application_id` | `varchar` |  |
+| `event_type` | `varchar` |  |
+| `actor_id` | `varchar` |  Nullable |
+| `old_stage` | `varchar` |  Nullable |
+| `new_stage` | `varchar` |  Nullable |
+| `note_content` | `text` |  Nullable |
+| `created_at` | `timestamptz` |  |
+
+---
+
+## Table `stalled_alert_dismissals`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `varchar` | Primary |
+| `application_id` | `varchar` |  |
+| `user_id` | `varchar` |  |
+| `stage` | `varchar` |  |
+| `stage_entered_at` | `timestamptz` |  |
+| `dismissed_at` | `timestamptz` |  |
+
+---
+
+## 3. Relationships Overview
+
+### One-to-Many Relationships
+* **`job_openings` → `applications`**: One job opening contains many applications. An application belongs to exactly one opening (`ON DELETE RESTRICT` protects openings with existing applicants from deletion).
+* **`applications` → `timeline_events`**: One application owns many immutable audit log events (`ON DELETE CASCADE`).
+* **`users` → `timeline_events`**: One user can act as the author (`actor_id`) for many timeline events (`ON DELETE SET NULL` preserves event history if a user account is deleted).
+* **`applications` → `stalled_alert_dismissals`**: One application can have dismissals across different stages and time periods (`ON DELETE CASCADE`).
+
+### Many-to-Many Relationships
+* **`applications` ↔ `users` (Interviewers)**: Connected via the `application_interviewers` junction table. One application can be assigned multiple interviewers, and one interviewer can evaluate multiple applications. Duplicate assignments are prevented by the composite primary key `(application_id, user_id)`.
+
+---
+
+## 4. Constraints: Database vs. Application Layer
+
+### Enforced in Database (PostgreSQL DDL):
+1. **Primary & Foreign Keys**: Primary keys on all tables; foreign key referential integrity with cascading or restricted deletes.
+2. **Uniqueness**:
+   * `users(email)`: Prevents duplicate account registration.
+   * `stalled_alert_dismissals(application_id, stage, stage_entered_at)`: Guarantees dismissal uniqueness per stalled period.
+   * `application_interviewers(application_id, user_id)`: Prevents assigning the same interviewer twice to one candidate.
+3. **Check Constraints**:
+   * `role IN ('RECRUITER', 'INTERVIEWER')`
+   * `status IN ('OPEN', 'ARCHIVED')`
+   * `current_stage IN ('APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER', 'HIRED', 'REJECTED')`
+   * `check_rejected_origin`: Mandates that `rejected_from_stage` cannot be null if `current_stage = 'REJECTED'`.
+
+### Enforced in Application Code (Node/Express):
+1. **Linear Pipeline Progression**: Validates that candidates can only advance forward one stage at a time (`APPLIED → SCREENING → INTERVIEW → OFFER → HIRED`). Rejects illegal skips with HTTP 422.
+2. **Reinstatement Target**: Ensures candidates are restored strictly to their exact recorded `rejected_from_stage`.
+3. **Role-Based Authorization (RBAC)**: Enforces recruiter-only capabilities (advancing stages, managing openings, bulk actions) and scopes interviewer visibility strictly to their assigned candidates.
+4. **Append-Only Timeline Immutability**: Prohibits any update or delete operations on `timeline_events`.
+
+---
+
+## 5. Deliberately Denormalised Fields
+
+* **`rejected_from_stage` in `applications`**: Stored directly on the application row so that restoring a rejected candidate to their previous stage is an immediate $O(1)$ read and write, rather than requiring a descending historical scan over `timeline_events`.
+* **`stage_entered_at` in `applications`**: Stored on the application row to allow instantaneous indexing for the 10-day inactivity alert query, avoiding expensive aggregate `MAX(created_at)` calculations across millions of timeline rows.
+
+---
+
+## 6. What Would Break First at 100x Data
+
+At 100x scale (e.g., 2,500,000 applications, 20,000,000 timeline events, 50,000 job openings):
+
+1. **Stalled Application Alert Query (`GET /api/alerts/stalled`)**:
+   * *What breaks:* The `LEFT JOIN` between `applications` and `stalled_alert_dismissals` filtering by `stage_entered_at <= NOW() - 10 days` will degrade into sequential or hash joins scanning millions of historical and terminal applications.
+   * *Remediation:* Create a partial index:
+     ```sql
+     CREATE INDEX idx_apps_active_stalled 
+     ON applications (stage_entered_at) 
+     WHERE current_stage IN ('APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER');
+     ```
+
+2. **Timeline Event Volume (`GET /api/applications/:id/timeline`)**:
+   * *What breaks:* Unbounded retrieval of timeline events for applications with long interview loops will cause high memory usage and query latency.
+   * *Remediation:* Partition `timeline_events` by range on `created_at` (monthly) and enforce cursor-based pagination (`LIMIT 50 WHERE id < $cursor`).
+
+3. **Dashboard Weekly Trend Calculations**:
+   * *What breaks:* Scanning 12 weeks of historical stage changes across millions of timeline events on every dashboard visit will cause CPU spikes.
+   * *Remediation:* Implement a PostgreSQL Materialized View refreshed periodically, or maintain an hourly summary roll-up table.
+
+4. **CSV Export Memory Buffering**:
+   * *What breaks:* Exporting hundreds of thousands of candidate rows at once will exceed Node.js buffer limits and trigger Out-Of-Memory (OOM) process crashes.
+   * *Remediation:* Stream database rows in 500-row chunks using `pg-query-stream` directly into the HTTP response stream.
