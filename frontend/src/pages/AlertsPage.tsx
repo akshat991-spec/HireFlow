@@ -106,9 +106,9 @@ export const AlertsPage: React.FC = () => {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 className="page-title">Stalled Application Alerts</h1>
+          <h1 className="page-title">Candidate Inactivity Alerts</h1>
           <div className="page-subtitle-tracked">
-            CANDIDATES SITTING IN THE SAME STAGE FOR MORE THAN 10 DAYS
+            APPLICATIONS SITTING IN THE SAME STAGE FOR MORE THAN 10 DAYS
           </div>
         </div>
 
@@ -187,7 +187,7 @@ export const AlertsPage: React.FC = () => {
         >
           <ShieldCheck size={24} />
           <div>
-            <strong>Recruiter-Only Feature:</strong> Stalled candidate pipeline alerts and dismissal workflows are managed by recruiters. Please review your assigned interviews under <strong>My Applications</strong>.
+            <strong>Recruiter-Only Feature:</strong> Candidate inactivity alerts and dismissal workflows are managed by recruiters. Please review your assigned interviews under <strong>My Applications</strong>.
           </div>
         </div>
       )}

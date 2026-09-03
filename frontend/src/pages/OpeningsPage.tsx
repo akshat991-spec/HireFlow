@@ -90,7 +90,7 @@ export const OpeningsPage: React.FC = () => {
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.25rem' }}>Job Openings</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            Manage positions, departments, job specifications, and candidate pipelines.
+            Manage positions, departments, job specifications, and hiring workflows.
           </p>
         </div>
         <button

@@ -145,7 +145,7 @@ export const Header: React.FC<HeaderProps> = ({
           />
           <input
             type="text"
-            placeholder="Search candidates, roles, or pipeline..."
+            placeholder="Search candidates, job roles, or stages..."
             style={{
               width: '100%',
               padding: '0.45rem 0.85rem 0.45rem 2.4rem',
@@ -315,7 +315,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <div style={{ padding: '2rem 1.5rem', textAlign: 'center' }}>
                     <CheckCircle size={32} color="#10b981" style={{ margin: '0 auto 0.5rem auto' }} />
                     <p style={{ fontWeight: 600, fontSize: '0.875rem', color: '#0f172a', margin: '0 0 0.25rem 0' }}>
-                      All pipelines moving swiftly!
+                      All candidates moving swiftly!
                     </p>
                     <p style={{ fontSize: '0.775rem', color: '#64748b', margin: 0 }}>
                       No candidates sitting in a stage for over 10 days.

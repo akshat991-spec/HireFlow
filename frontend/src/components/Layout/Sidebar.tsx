@@ -169,7 +169,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={handleNavClick}
               className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
               id="nav-candidates"
-              title={isRecruiter ? 'Candidate Pipelines' : 'My Applications'}
+              title={isRecruiter ? 'Candidate Directory' : 'My Applications'}
             >
               <Users size={18} />
               <span>{isRecruiter ? 'Candidates' : 'My Applications'}</span>
@@ -181,10 +181,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={handleNavClick}
               className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
               id="nav-alerts"
-              title="Stalled Candidate Alerts"
+              title="Candidates Requiring Attention"
             >
               <Bell size={18} />
-              <span>Stalled Alerts</span>
+              <span>Inactivity Alerts</span>
               {alertsCount > 0 && <span className="nav-badge">{alertsCount}</span>}
             </NavLink>
           </li>

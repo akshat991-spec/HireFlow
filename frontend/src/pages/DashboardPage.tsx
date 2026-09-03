@@ -12,11 +12,13 @@ import {
   Clock,
   Layers,
   ArrowUpRight,
-  ShieldCheck,
   CheckCircle2,
+  AlertCircle,
+  ExternalLink,
 } from 'lucide-react';
 import { api } from '../services/api.js';
-import { DashboardData, HealthCheckData, Stage } from '../types/index.js';
+import { useAuth } from '../context/AuthContext.js';
+import { DashboardData, HealthCheckData, Stage, StalledAlert, Role } from '../types/index.js';
 
 const STAGE_THEME: Record<Stage, { bg: string; text: string; bar: string }> = {
   [Stage.APPLIED]: { bg: '#eff6ff', text: '#2563eb', bar: '#3b82f6' },
@@ -27,28 +29,43 @@ const STAGE_THEME: Record<Stage, { bg: string; text: string; bar: string }> = {
   [Stage.REJECTED]: { bg: '#fef2f2', text: '#b91c1c', bar: '#ef4444' },
 };
 
+function getCandidateInitials(name: string): string {
+  if (!name) return 'C';
+  const parts = name.trim().split(' ');
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 export const DashboardPage: React.FC = () => {
+  const { currentUser } = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
-  const [health, setHealth] = useState<HealthCheckData | null>(null);
+  const [stalledAlerts, setStalledAlerts] = useState<StalledAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
 
-  const fetchDashboardMetrics = async () => {
+  const isRecruiter = currentUser?.role === Role.RECRUITER;
+
+  const fetchDashboardData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [dashRes, healthRes] = await Promise.all([
+      const promises: [Promise<any>, Promise<any>?] = [
         api.get<DashboardData>('/api/dashboard/metrics'),
-        api.get<HealthCheckData>('/api/health', { silent: true }),
-      ]);
+      ];
+
+      if (isRecruiter) {
+        promises.push(api.get<{ alerts: StalledAlert[] }>('/api/alerts/stalled', { silent: true }));
+      }
+
+      const [dashRes, alertsRes] = await Promise.all(promises);
 
       if (dashRes.success) {
         setData(dashRes.data);
         setLastRefreshed(new Date());
       }
-      if (healthRes.success) {
-        setHealth(healthRes.data);
+      if (alertsRes && alertsRes.success && alertsRes.data?.alerts) {
+        setStalledAlerts(alertsRes.data.alerts);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load dashboard metrics');
@@ -58,8 +75,8 @@ export const DashboardPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchDashboardMetrics();
-  }, []);
+    fetchDashboardData();
+  }, [currentUser]);
 
   const headline = data?.headline;
   const maxWeeklyCount = data?.weeklyTrend
@@ -73,7 +90,7 @@ export const DashboardPage: React.FC = () => {
         <div>
           <h1 className="page-title">Recruitment Dashboard</h1>
           <div className="page-subtitle-tracked">
-            REAL-TIME PIPELINE ANALYTICS & TALENT FUNNEL
+            REAL-TIME HIRING METRICS & WORKFLOW OVERVIEW
           </div>
         </div>
 
@@ -83,7 +100,7 @@ export const DashboardPage: React.FC = () => {
           </span>
           <button
             className="btn btn-secondary"
-            onClick={fetchDashboardMetrics}
+            onClick={fetchDashboardData}
             disabled={loading}
             style={{ padding: '0.45rem 0.85rem', fontSize: '0.85rem' }}
           >
@@ -110,7 +127,7 @@ export const DashboardPage: React.FC = () => {
           <AlertTriangle size={20} />
           <span>{error}</span>
           <button
-            onClick={fetchDashboardMetrics}
+            onClick={fetchDashboardData}
             className="btn btn-secondary"
             style={{ marginLeft: 'auto', padding: '0.25rem 0.75rem' }}
           >
@@ -119,7 +136,7 @@ export const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* 1. Headline KPI Cards */}
+      {/* 1. Primary Recruitment KPIs */}
       <div className="kpi-grid">
         {/* Open Positions */}
         <NavLink
@@ -153,7 +170,7 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', color: '#d97706', marginTop: '0.75rem', fontWeight: 600 }}>
-            <span>Manage active openings</span>
+            <span>Active openings directory</span>
             <ArrowUpRight size={13} />
           </div>
         </NavLink>
@@ -190,7 +207,7 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', color: '#0066ff', marginTop: '0.75rem', fontWeight: 600 }}>
-            <span>View candidate pipeline</span>
+            <span>View candidate pool</span>
             <ArrowUpRight size={13} />
           </div>
         </NavLink>
@@ -228,7 +245,7 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', color: '#0284c7', marginTop: '0.75rem', fontWeight: 600 }}>
-            <span>View interview candidates</span>
+            <span>Scheduled evaluations</span>
             <ArrowUpRight size={13} />
           </div>
         </NavLink>
@@ -266,28 +283,28 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', color: '#059669', marginTop: '0.75rem', fontWeight: 600 }}>
-            <span>View hired candidates</span>
+            <span>Completed placements</span>
             <ArrowUpRight size={13} />
           </div>
         </NavLink>
       </div>
 
-      {/* 2. Middle Grid: Pipeline Funnel + 12-Week Quarterly Trend */}
+      {/* 2. Middle Grid: Recruitment Stages & Influx Trend */}
       <div className="dashboard-two-col">
-        {/* Pipeline Stage Distribution Funnel */}
+        {/* Candidates by Recruitment Stage */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
               <Layers size={18} color="#0066ff" />
               <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                Candidate Pipeline by Stage
+                Candidates by Recruitment Stage
               </h2>
             </div>
             <NavLink
               to="/candidates"
               style={{ fontSize: '0.8rem', color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}
             >
-              View all
+              View directory
             </NavLink>
           </div>
 
@@ -347,7 +364,7 @@ export const DashboardPage: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
               <TrendingUp size={18} color="#d97706" />
               <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                Application Volume (Last Quarter)
+                Application Influx (Last Quarter)
               </h2>
             </div>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>
@@ -418,7 +435,7 @@ export const DashboardPage: React.FC = () => {
               })}
             </div>
 
-            {/* Distinct Month Axis: Month names appear exactly once */}
+            {/* Distinct Month Axis */}
             <div
               style={{
                 display: 'flex',
@@ -457,19 +474,22 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. Bottom Grid: Top Openings + Stalled Pipeline Summary */}
+      {/* 3. Bottom Grid: Openings Overview + Actionable Attention Alerts */}
       <div className="dashboard-two-col">
-        {/* Applications by Job Opening */}
+        {/* Applications by Job Opening — Clean, non-repetitive presentation */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-              Applications by Job Opening
-            </h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Briefcase size={18} color="#0066ff" />
+              <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                Active Job Openings
+              </h2>
+            </div>
             <NavLink
               to="/openings"
               style={{ fontSize: '0.8rem', color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}
             >
-              View All Openings
+              Manage Openings
             </NavLink>
           </div>
 
@@ -487,7 +507,7 @@ export const DashboardPage: React.FC = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '0.65rem 0.85rem',
+                    padding: '0.75rem 0.95rem',
                     backgroundColor: '#f8fafc',
                     border: '1px solid var(--border-color)',
                     borderRadius: 'var(--radius-sm)',
@@ -498,23 +518,44 @@ export const DashboardPage: React.FC = () => {
                   className="hover-bg"
                   title={`View candidates for ${op.title}`}
                 >
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
                       {op.title}
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      {op.department}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span
+                        style={{
+                          fontSize: '0.7rem',
+                          padding: '0.1rem 0.45rem',
+                          borderRadius: 'var(--radius-full)',
+                          backgroundColor: '#e2e8f0',
+                          color: '#334155',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {op.department}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        {op.totalApplications} total applicant{op.totalApplications === 1 ? '' : 's'}
+                      </span>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
-                        {op.totalApplications} total
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: '#0066ff' }}>
-                        {op.activeApplications} active
-                      </div>
-                    </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <span
+                      style={{
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        padding: '0.25rem 0.6rem',
+                        borderRadius: 'var(--radius-full)',
+                        backgroundColor: '#eff6ff',
+                        color: '#0066ff',
+                        border: '1px solid #bfdbfe',
+                      }}
+                    >
+                      {op.activeApplications} in progress
+                    </span>
+                    <ChevronRight size={16} color="var(--text-muted)" />
                   </div>
                 </NavLink>
               ))}
@@ -522,99 +563,142 @@ export const DashboardPage: React.FC = () => {
           )}
         </div>
 
-        {/* Stalled Applications Health Card */}
+        {/* Actionable Attention Alerts (Candidates Exceeding Inactivity Threshold) */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <AlertTriangle size={18} color="#dc2626" />
+              <Clock size={18} color="#dc2626" />
               <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                Stalled Pipeline Health
+                Candidates Requiring Attention
               </h2>
             </div>
-            <NavLink
-              to="/alerts"
-              style={{ fontSize: '0.8rem', color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}
-            >
-              Review Alerts
-            </NavLink>
+            {isRecruiter && (
+              <NavLink
+                to="/alerts"
+                style={{ fontSize: '0.8rem', color: '#dc2626', textDecoration: 'none', fontWeight: 700 }}
+              >
+                Review All Alerts ({data?.stalledSummary.totalStalled ?? 0})
+              </NavLink>
+            )}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+          {!isRecruiter ? (
+            <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              Inactivity and review alerts are managed by recruiting team members.
+            </div>
+          ) : stalledAlerts.length === 0 ? (
             <div
               style={{
-                padding: '0.85rem',
-                backgroundColor: (data?.stalledSummary.totalStalled ?? 0) > 0 ? '#fef2f2' : '#ecfdf5',
-                border: `1px solid ${(data?.stalledSummary.totalStalled ?? 0) > 0 ? '#fecaca' : '#a7f3d0'}`,
+                padding: '2.5rem 1.5rem',
+                textAlign: 'center',
+                backgroundColor: '#ecfdf5',
+                border: '1px solid #a7f3d0',
                 borderRadius: 'var(--radius-sm)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.5rem',
               }}
             >
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-                Un-dismissed Stalled
+              <CheckCircle2 size={32} color="#059669" />
+              <div style={{ fontWeight: 700, color: '#047857', fontSize: '0.95rem' }}>
+                All Candidates on Schedule
               </div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: (data?.stalledSummary.totalStalled ?? 0) > 0 ? '#dc2626' : '#059669' }}>
-                {data?.stalledSummary.totalStalled ?? 0}
+              <div style={{ fontSize: '0.8rem', color: '#065f46', maxWidth: '320px' }}>
+                Zero applications have exceeded the 10-day inactivity threshold in their current stage.
               </div>
             </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                Applications waiting over 10 days without stage movement:
+              </div>
 
-            <div
-              style={{
-                padding: '0.85rem',
-                backgroundColor: '#fffbeb',
-                border: '1px solid #fde68a',
-                borderRadius: 'var(--radius-sm)',
-              }}
-            >
-              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
-                Longest Stalled Time
-              </div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#d97706' }}>
-                {(data?.stalledSummary.longestDays ?? 0) > 0 ? `${data?.stalledSummary.longestDays}d` : '0d'}
-              </div>
-            </div>
-          </div>
+              {/* Direct candidate items instead of repetitive aggregate numbers */}
+              {stalledAlerts.slice(0, 3).map((alert) => (
+                <NavLink
+                  key={alert.applicationId}
+                  to="/alerts"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0.75rem 0.9rem',
+                    backgroundColor: '#fff7ed',
+                    border: '1px solid #fed7aa',
+                    borderRadius: 'var(--radius-sm)',
+                    textDecoration: 'none',
+                    color: 'inherit',
+                    transition: 'all var(--transition-fast)',
+                  }}
+                  className="hover-bg"
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div
+                      style={{
+                        width: '34px',
+                        height: '34px',
+                        borderRadius: 'var(--radius-full)',
+                        backgroundColor: '#ffedd5',
+                        border: '1px solid #fdba74',
+                        color: '#c2410c',
+                        fontWeight: 700,
+                        fontSize: '0.75rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {getCandidateInitials(alert.candidateName)}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                        {alert.candidateName}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        {alert.jobTitle}
+                      </div>
+                    </div>
+                  </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-              Stalled Stage Breakdown:
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              {Object.keys(data?.stalledSummary.byStage || {}).length === 0 ? (
-                <div style={{ fontSize: '0.82rem', color: '#059669', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <CheckCircle2 size={14} />
-                  <span>No active bottlenecks detected (&gt; 10 days)</span>
-                </div>
-              ) : (
-                Object.entries(data?.stalledSummary.byStage || {}).map(([stage, count]) => (
-                  <span
-                    key={stage}
-                    style={{
-                      fontSize: '0.75rem',
-                      padding: '0.15rem 0.5rem',
-                      borderRadius: 'var(--radius-full)',
-                      backgroundColor: '#fef2f2',
-                      border: '1px solid #fecaca',
-                      color: '#b91c1c',
-                      fontWeight: 700,
-                    }}
-                  >
-                    {stage}: {count}
-                  </span>
-                ))
-              )}
-            </div>
-          </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
+                    <span
+                      style={{
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        padding: '0.15rem 0.5rem',
+                        borderRadius: 'var(--radius-full)',
+                        backgroundColor: '#fee2e2',
+                        color: '#b91c1c',
+                        border: '1px solid #fca5a5',
+                      }}
+                    >
+                      {alert.daysInStage}d at {alert.currentStage}
+                    </span>
+                    <span style={{ fontSize: '0.7rem', color: '#c2410c', fontWeight: 600 }}>
+                      Needs review
+                    </span>
+                  </div>
+                </NavLink>
+              ))}
 
-          <NavLink
-            to="/alerts"
-            className="btn btn-secondary"
-            style={{ marginTop: 'auto', padding: '0.45rem 0.85rem', fontSize: '0.85rem', justifyContent: 'space-between' }}
-          >
-            <span>Open Stalled Alerts Manager</span>
-            <ChevronRight size={15} />
-          </NavLink>
+              <NavLink
+                to="/alerts"
+                className="btn btn-secondary"
+                style={{
+                  marginTop: '0.25rem',
+                  padding: '0.45rem 0.85rem',
+                  fontSize: '0.85rem',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <span>Manage Inactivity Alerts</span>
+                <ChevronRight size={15} />
+              </NavLink>
+            </div>
+          )}
         </div>
       </div>
-
     </div>
   );
 };

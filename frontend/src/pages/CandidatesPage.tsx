@@ -259,7 +259,7 @@ export const CandidatesPage: React.FC = () => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `hireflow_pipeline_export_${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `hireflow_candidate_export_${new Date().toISOString().split('T')[0]}.csv`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -339,7 +339,7 @@ export const CandidatesPage: React.FC = () => {
           }}
         >
           <CheckCircle2 size={18} />
-          <span>Pipeline snapshot CSV export downloaded successfully!</span>
+          <span>Candidate data CSV export downloaded successfully!</span>
         </div>
       )}
 
