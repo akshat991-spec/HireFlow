@@ -135,7 +135,6 @@ This document records the actual prompts used during the design, implementation,
 
 ## Phase 3: Project Restructuring, Terminology & Registration
 
-
 ### 16. Dashboard De-duplication & Terminology Polish
 - **Prompt:**
   > "Dont keep repetative info in the dashboard and instead of using 'stalled pipeline alerts' and the word 'pipeline' use other meaningful word."
