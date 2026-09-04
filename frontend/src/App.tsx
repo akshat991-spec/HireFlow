@@ -8,6 +8,7 @@ import { OpeningsPage } from './pages/OpeningsPage.js';
 import { CandidatesPage } from './pages/CandidatesPage.js';
 import { AlertsPage } from './pages/AlertsPage.js';
 import { NotFoundPage } from './pages/NotFoundPage.js';
+import { Role } from './types/index.js';
 import { Loader2 } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -44,7 +45,10 @@ export const App: React.FC = () => {
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="openings" element={<OpeningsPage />} />
         <Route path="candidates" element={<CandidatesPage />} />
-        <Route path="alerts" element={<AlertsPage />} />
+        <Route
+          path="alerts"
+          element={currentUser?.role === Role.RECRUITER ? <AlertsPage /> : <Navigate to="/dashboard" replace />}
+        />
         <Route path="login" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

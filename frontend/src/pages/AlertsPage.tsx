@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import {
   AlertTriangle,
   Clock,
@@ -38,8 +39,11 @@ export const AlertsPage: React.FC = () => {
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
+  if (currentUser && currentUser.role !== Role.RECRUITER) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   const isRecruiter = currentUser?.role === Role.RECRUITER;
-  const isInterviewer = currentUser?.role === Role.INTERVIEWER;
 
   const fetchAlerts = async () => {
     if (!isRecruiter) {
@@ -163,30 +167,8 @@ export const AlertsPage: React.FC = () => {
           </button>
         </div>
       )}
-      {isInterviewer && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-            backgroundColor: '#f0f9ff',
-            border: '1px solid #bae6fd',
-            borderRadius: 'var(--radius-md)',
-            padding: '1.25rem',
-            color: '#0369a1',
-            fontSize: '0.9rem',
-          }}
-        >
-          <ShieldCheck size={24} />
-          <div>
-            <strong>Recruiter-Only Feature:</strong> Candidate inactivity alerts and dismissal workflows are managed by recruiters. Please review your assigned interviews under <strong>My Applications</strong>.
-          </div>
-        </div>
-      )}
-
-      {isRecruiter && (
-        <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+      <>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
             <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.25rem' }}>
               <div
                 style={{
@@ -488,7 +470,6 @@ export const AlertsPage: React.FC = () => {
             </div>
           )}
         </>
-      )}
       <ApplicationDetailModal
         isOpen={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}

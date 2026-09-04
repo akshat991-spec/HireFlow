@@ -184,7 +184,8 @@ export const Header: React.FC<HeaderProps> = ({
           <Shield size={12} />
           <span>{isRecruiter ? 'Recruiter' : 'Interviewer'}</span>
         </div>
-        <div style={{ position: 'relative' }}>
+        {isRecruiter && (
+          <div style={{ position: 'relative' }}>
           <button
             ref={bellButtonRef}
             onClick={toggleDropdown}
@@ -408,7 +409,8 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           )}
         </div>
-        <div
+      )}
+      <div
           style={{
             width: '34px',
             height: '34px',

@@ -165,19 +165,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span>{isRecruiter ? 'Candidates' : 'My Applications'}</span>
             </NavLink>
           </li>
-          <li>
-            <NavLink
-              to="/alerts"
-              onClick={handleNavClick}
-              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-              id="nav-alerts"
-              title="Candidates Requiring Attention"
-            >
-              <Bell size={18} />
-              <span>Inactivity Alerts</span>
-              {alertsCount > 0 && <span className="nav-badge">{alertsCount}</span>}
-            </NavLink>
-          </li>
+          {isRecruiter && (
+            <li>
+              <NavLink
+                to="/alerts"
+                onClick={handleNavClick}
+                className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+                id="nav-alerts"
+                title="Candidates Requiring Attention"
+              >
+                <Bell size={18} />
+                <span>Inactivity Alerts</span>
+                {alertsCount > 0 && <span className="nav-badge">{alertsCount}</span>}
+              </NavLink>
+            </li>
+          )}
         </ul>
       </nav>
       <div style={{ position: 'relative', marginTop: 'auto', width: '100%' }}>

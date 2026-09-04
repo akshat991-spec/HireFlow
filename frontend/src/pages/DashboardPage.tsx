@@ -672,19 +672,35 @@ export const DashboardPage: React.FC = () => {
                 </NavLink>
               ))}
 
-              <NavLink
-                to="/alerts"
-                className="btn btn-secondary"
-                style={{
-                  marginTop: '0.25rem',
-                  padding: '0.45rem 0.85rem',
-                  fontSize: '0.85rem',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <span>Manage Inactivity Alerts</span>
-                <ChevronRight size={15} />
-              </NavLink>
+              {isRecruiter ? (
+                <NavLink
+                  to="/alerts"
+                  className="btn btn-secondary"
+                  style={{
+                    marginTop: '0.25rem',
+                    padding: '0.45rem 0.85rem',
+                    fontSize: '0.85rem',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <span>Manage Inactivity Alerts</span>
+                  <ChevronRight size={15} />
+                </NavLink>
+              ) : (
+                <NavLink
+                  to="/candidates"
+                  className="btn btn-secondary"
+                  style={{
+                    marginTop: '0.25rem',
+                    padding: '0.45rem 0.85rem',
+                    fontSize: '0.85rem',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <span>View Assigned Candidates</span>
+                  <ChevronRight size={15} />
+                </NavLink>
+              )}
             </div>
           )}
         </div>
