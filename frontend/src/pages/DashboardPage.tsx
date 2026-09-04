@@ -426,7 +426,6 @@ export const DashboardPage: React.FC = () => {
               }}
             >
               {data?.weeklyTrend.map((week, idx) => {
-                const dayNum = week.weekLabel.split(' ')[1];
                 const isCurrentWeek = idx === data.weeklyTrend.length - 1;
 
                 return (
@@ -439,13 +438,16 @@ export const DashboardPage: React.FC = () => {
                   >
                     <span
                       style={{
-                        fontSize: '0.68rem',
+                        fontSize: '0.62rem',
                         color: isCurrentWeek ? '#0066ff' : 'var(--text-muted)',
                         fontWeight: isCurrentWeek ? 700 : 500,
                         display: 'block',
+                        whiteSpace: 'nowrap',
+                        letterSpacing: '-0.02em',
                       }}
+                      title={`Week of ${week.weekLabel}`}
                     >
-                      {dayNum}
+                      {week.weekLabel}
                     </span>
                   </div>
                 );
