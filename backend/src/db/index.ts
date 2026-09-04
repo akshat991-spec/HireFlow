@@ -104,7 +104,10 @@ export async function initInMemoryDb(): Promise<void> {
   const __dirname = path.dirname(__filename);
 
   const memDb = newDb();
-  const schemaPath = path.join(__dirname, 'schema.sql');
+  let schemaPath = path.join(__dirname, 'schema.sql');
+  if (!fs.existsSync(schemaPath)) {
+    schemaPath = path.join(process.cwd(), 'src', 'db', 'schema.sql');
+  }
   const schemaSql = fs.readFileSync(schemaPath, 'utf-8');
   memDb.public.none(schemaSql);
 

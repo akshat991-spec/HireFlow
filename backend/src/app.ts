@@ -16,7 +16,23 @@ export function createApp(): Express {
   const app = express();
 
   app.use(cors({
-    origin: config.corsOrigin,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (curl, mobile, server-to-server)
+      if (!origin) return callback(null, true);
+
+      const configured = config.corsOrigin.split(',').map((s) => s.trim());
+      const isAllowed =
+        configured.includes(origin) ||
+        configured.includes('*') ||
+        /^https?:\/\/localhost(:\d+)?$/.test(origin) ||
+        /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin) ||
+        origin.endsWith('.vercel.app');
+
+      if (isAllowed) {
+        return callback(null, true);
+      }
+      return callback(null, true);
+    },
     credentials: true,
   }));
   app.use(express.json());
@@ -24,6 +40,16 @@ export function createApp(): Express {
   app.use(cookieParser());
 
   app.use('/api', apiRouter);
+
+  app.get('/', (req, res) => {
+    res.status(200).json({
+      success: true,
+      message: 'HireFlow API is running successfully!',
+      environment: config.nodeEnv,
+      health: '/api/health',
+      documentation: 'https://github.com/akshat991-spec/HireFlow',
+    });
+  });
 
   const prodPublicDir = path.resolve(process.cwd(), 'dist/public');
   const devFrontendDir = path.resolve(process.cwd(), 'frontend');
