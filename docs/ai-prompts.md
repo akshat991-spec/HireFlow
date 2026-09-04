@@ -179,3 +179,17 @@ This document records the actual prompts used during the design, implementation,
     1. Updated backend `GET /api/applications` to support `stage=ACTIVE` (and `status=active`) returning candidates in active stages (`APPLIED`, `SCREENING`, `INTERVIEW`, `OFFER`).
     2. Updated `DashboardPage.tsx` links: "Assigned Roles" routes to `/openings`, "My Candidates" routes to `/candidates?stage=ACTIVE`, "My Interviews" routes to `/candidates?stage=INTERVIEW`, and assigned opening rows route to `/candidates?opening=<id>`.
     3. Refactored `CandidatesPage.tsx` to synchronize all filters (`stage`, `opening`, `search`, `source`) with React Router's `searchParams`, added the "Active Pipeline" stage option, styled active dropdown pills, and introduced an "Active Filter Chips Bar" (`Filtered By: Stage: Active Pipeline ✕`) with one-click dismiss and reset actions.
+
+### 20. Default Dashboard Landing on Role Switch & Interviewer Active Interview Count
+- **Prompt:**
+  > "there are 3 people in the interview stage so why is it visible that My interview are 2. also whenever when i change the role / log in into any demo or real account, the first page that i should see must be the Dashboard page."
+- **What you got:**
+  - Configured centralized navigation in `AuthProvider` so logging in, registering, or switching roles/personas immediately redirects the user to `/dashboard` as their initial view.
+  - Updated the interviewer workspace metrics query in `dashboard.routes.ts` so that "My Interviews" reflects all assigned candidates currently in the `INTERVIEW` stage (3) rather than restricting to this week's transitions.
+- **What you corrected (Mistake & Fix):**
+  - **The Problem:**
+    1. The KPI metric for interviewers was filtering `stage_entered_at >= startOfWeek`, which counted only 2 of the 3 candidates in the interview stage because the third had entered the stage earlier, creating a mismatch with the applications table.
+    2. When switching roles via the sidebar persona menu, the user remained on whatever subpage they were currently viewing (e.g., `/candidates`) instead of landing on the persona's dashboard.
+  - **The Correction:**
+    1. Adjusted `dashboard.routes.ts` so that `currentInterviewAppsQuery` for interviewers counts all assigned candidates whose `current_stage = 'INTERVIEW'`, aligning the KPI number (3) with the applications view.
+    2. Injected `useNavigate` into `AuthProvider` in `AuthContext.tsx` to automatically call `navigate('/dashboard')` upon `login`, `register`, `loginAs`, and `logout`.

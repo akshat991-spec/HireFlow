@@ -120,9 +120,8 @@ dashboardRouter.get(
              JOIN job_openings j ON a.job_opening_id = j.id 
              WHERE j.status = 'OPEN' 
                AND ai.user_id = $1 
-               AND a.current_stage = 'INTERVIEW' 
-               AND a.stage_entered_at >= $2`,
-            [userId, startOfWeek.toISOString()]
+               AND a.current_stage = 'INTERVIEW'`,
+            [userId]
           )
         : query<{ id: string }>(
             `SELECT a.id 

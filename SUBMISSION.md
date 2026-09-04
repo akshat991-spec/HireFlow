@@ -51,6 +51,6 @@ All security, authorization boundaries, pipeline progression rules, and history 
 - **Run Backend Only:** `cd backend && npm run dev` (or `npm run dev:backend` from root)
 - **Run Frontend Only:** `cd frontend && npm run dev` (or `npm run dev:frontend` from root)
 - **Run Seed Database:** `npm run db:seed`
-- **Run Test Suite:** `npm run test` (143 automated tests across 12 test suites)
+- **Run Test Suite:** `npm run test` (144 automated tests across 12 test suites)
 - **Build Client Bundle:** `npm run build:client`
 - **Build Backend Server:** `npm run build:server`

@@ -29,7 +29,7 @@ The work was divided into seven focused sessions corresponding to the project's 
 
 5. **Session 5: Frontend Layout Polish & Automated Testing (Aug 31, Evening)**
    - Enhanced the UI layout with a collapsible sidebar, global header search drawer, candidate filter URL parameter synchronization, and modal error banners.
-   - Authored the comprehensive Vitest automated test suite (143 tests across 12 test suites) running against in-memory PostgreSQL (`pg-mem`).
+   - Authored the comprehensive Vitest automated test suite (144 tests across 12 test suites) running against in-memory PostgreSQL (`pg-mem`).
 
 6. **Session 6: Seed Enhancements & Event Dispatcher (Sep 1)**
    - Expanded database seeding with diverse, realistic candidate profiles across all 6 stages.
@@ -47,11 +47,11 @@ The work was divided into seven focused sessions corresponding to the project's 
 2. **Authentication & Authorization (RBAC) Middleware**
 3. **Core Pipeline State Machine & Reinstatement Logic**
 4. **Entity CRUD Endpoints & Relational Scoping**
-5. **Automated Test Harness (143 Tests)**
+5. **Automated Test Harness (144 Tests)**
 6. **Frontend User Interface (React 18 + Vite)**
 
 **Why that order?**
-Building from the data persistence layer upward ensures that business rules (such as preventing stage skips or ensuring timeline events cannot be updated) are guaranteed by the database and server-side state machine before any user interface is built. The UI is merely a presentation layer on top of a rock-solid, tamper-proof backend API. Testing the backend with 143 automated tests before refining the frontend guaranteed zero regressions.
+Building from the data persistence layer upward ensures that business rules (such as preventing stage skips or ensuring timeline events cannot be updated) are guaranteed by the database and server-side state machine before any user interface is built. The UI is merely a presentation layer on top of a rock-solid, tamper-proof backend API. Testing the backend with 144 automated tests before refining the frontend guaranteed zero regressions.
 
 ---
 
@@ -64,7 +64,7 @@ Building from the data persistence layer upward ensures that business rules (suc
 | **Stalled Inactivity Lifecycle** | 1.5 hours | 3.0 hours | Took twice as long; supporting alert reappearance upon advancing to a new stage required a composite `(application_id, stage, stage_entered_at)` dismissal key rather than a simple boolean flag. |
 | **Server-side Search & Pagination** | 1.0 hour | 1.0 hour | On track; dynamic SQL parameterization in PostgreSQL. |
 | **Bulk Actions with Partial Failure Reporting** | 1.5 hours | 2.0 hours | Slightly over; structuring the independent per-application error reporting response so the batch doesn't abort required deliberate error handling. |
-| **Automated Testing Suite (143 tests)** | 3.0 hours | 3.5 hours | Slightly over; testing every illegal stage combination and interviewer permission boundary thoroughly. |
+| **Automated Testing Suite (144 tests)** | 3.0 hours | 3.5 hours | Slightly over; testing every illegal stage combination and interviewer permission boundary thoroughly. |
 | **Frontend UI** | 4.0 hours | 5.0 hours | Over estimate; restructuring into clean `backend/` and `frontend/` directories and adding self-service registration with data preservation took additional polish. |
 
 ---

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api.js';
 import { UserPublic, Role } from '../types/index.js';
 
@@ -47,6 +48,7 @@ export const DEMO_ACCOUNTS = [
 ];
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<UserPublic | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -75,6 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCurrentUser(res.data.user);
       (window as any).showToast?.(`Welcome back, ${res.data.user.name}!`, 'success');
       window.dispatchEvent(new CustomEvent('hireflow:alerts-updated'));
+      navigate('/dashboard');
     }
   };
 
@@ -93,6 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         : 'Access to all openings & candidate records enabled!';
       (window as any).showToast?.(`Account registered! ${roleMsg}`, 'success');
       window.dispatchEvent(new CustomEvent('hireflow:alerts-updated'));
+      navigate('/dashboard');
     }
   };
 
@@ -107,6 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentUser(res.data.user);
         (window as any).showToast?.(`Switched to ${res.data.user.name} (${res.data.user.role})`, 'success');
         window.dispatchEvent(new CustomEvent('hireflow:alerts-updated'));
+        navigate('/dashboard');
       }
     } catch (err: any) {
       console.error('Failed to login:', err);
@@ -122,6 +127,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('hireflow_token');
       setCurrentUser(null);
       (window as any).showToast?.('Logged out successfully', 'info');
+      navigate('/dashboard');
     }
   };
 
