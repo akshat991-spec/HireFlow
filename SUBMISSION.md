@@ -3,7 +3,7 @@
 ## Links
 
 - **GitHub repository:** https://github.com/akshat991-spec/HireFlow
-- **Live application:** Local Dev & Production Ready (http://localhost:5173 / http://localhost:3000)
+- **Live application:** https://hire-flow-frontend-lovat.vercel.app/
 
 ## Notes for the reviewer
 
