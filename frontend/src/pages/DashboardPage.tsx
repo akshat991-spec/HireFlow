@@ -144,9 +144,10 @@ export const DashboardPage: React.FC = () => {
       <div className="kpi-grid">
         {/* Open Positions / Assigned Roles */}
         <NavLink
-          to={isRecruiter ? "/openings" : "/candidates"}
+          to="/openings"
           style={{ textDecoration: 'none', color: 'inherit' }}
           className="card"
+          title={isRecruiter ? "View active job openings directory" : "View your assigned job openings"}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
@@ -181,9 +182,10 @@ export const DashboardPage: React.FC = () => {
 
         {/* Active Candidates / My Candidates */}
         <NavLink
-          to="/candidates"
+          to="/candidates?stage=ACTIVE"
           style={{ textDecoration: 'none', color: 'inherit' }}
           className="card"
+          title={isRecruiter ? "View all active candidate pipeline" : "View your active assigned candidates"}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
@@ -499,10 +501,10 @@ export const DashboardPage: React.FC = () => {
               </NavLink>
             ) : (
               <NavLink
-                to="/candidates"
+                to="/openings"
                 style={{ fontSize: '0.8rem', color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}
               >
-                View Candidates
+                View Assigned Openings
               </NavLink>
             )}
           </div>
@@ -632,7 +634,7 @@ export const DashboardPage: React.FC = () => {
               {stalledAlerts.slice(0, 3).map((alert) => (
                 <NavLink
                   key={alert.applicationId}
-                  to={isRecruiter ? "/alerts" : "/candidates"}
+                  to={isRecruiter ? "/alerts" : `/candidates?search=${encodeURIComponent(alert.candidateName)}`}
                   style={{
                     display: 'flex',
                     alignItems: 'center',

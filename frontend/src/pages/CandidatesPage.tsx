@@ -41,7 +41,7 @@ function getCandidateInitials(name: string): string {
 
 export const CandidatesPage: React.FC = () => {
   const { currentUser } = useAuth();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [applications, setApplications] = useState<Application[]>([]);
   const [openings, setOpenings] = useState<JobOpening[]>([]);
@@ -49,10 +49,15 @@ export const CandidatesPage: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
 
   // Search & Filter State
-  const [search, setSearch] = useState(searchParams.get('search') || '');
-  const [stageFilter, setStageFilter] = useState(searchParams.get('stage') || '');
-  const [openingFilter, setOpeningFilter] = useState(searchParams.get('opening') || '');
-  const [sourceFilter, setSourceFilter] = useState('');
+  const initialStage = searchParams.get('stage') || (searchParams.get('status') === 'active' ? 'ACTIVE' : '');
+  const initialOpening = searchParams.get('opening') || searchParams.get('jobOpeningId') || '';
+  const initialSearch = searchParams.get('search') || '';
+  const initialSource = searchParams.get('source') || '';
+
+  const [search, setSearch] = useState(initialSearch);
+  const [stageFilter, setStageFilter] = useState(initialStage);
+  const [openingFilter, setOpeningFilter] = useState(initialOpening);
+  const [sourceFilter, setSourceFilter] = useState(initialSource);
 
   // Sorting & Pagination State
   const [sortBy, setSortBy] = useState('applied_date');
@@ -133,13 +138,19 @@ export const CandidatesPage: React.FC = () => {
     fetchOpenings();
   }, []);
 
+  // Synchronize filter state whenever URL searchParams change
   useEffect(() => {
-    const stage = searchParams.get('stage');
-    const opening = searchParams.get('opening');
-    const q = searchParams.get('search');
-    if (stage !== null) setStageFilter(stage);
-    if (opening !== null) setOpeningFilter(opening);
-    if (q !== null) setSearch(q);
+    const stage = searchParams.get('stage') || '';
+    const status = searchParams.get('status') || '';
+    const opening = searchParams.get('opening') || searchParams.get('jobOpeningId') || '';
+    const q = searchParams.get('search') || '';
+    const source = searchParams.get('source') || '';
+
+    setStageFilter(status === 'active' || stage === 'ACTIVE' ? 'ACTIVE' : stage);
+    setOpeningFilter(opening);
+    setSearch(q);
+    setSourceFilter(source);
+    setPage(1);
   }, [searchParams]);
 
   useEffect(() => {
@@ -156,6 +167,7 @@ export const CandidatesPage: React.FC = () => {
     setSortOrder('desc');
     setPage(1);
     setSelectedIds([]);
+    setSearchParams({});
   };
 
   // Selection handlers
@@ -545,22 +557,28 @@ export const CandidatesPage: React.FC = () => {
           <select
             value={openingFilter}
             onChange={(e) => {
-              setOpeningFilter(e.target.value);
+              const val = e.target.value;
+              setOpeningFilter(val);
               setPage(1);
+              const next = new URLSearchParams(searchParams);
+              if (val) next.set('opening', val);
+              else next.delete('opening');
+              setSearchParams(next);
             }}
             style={{
               width: '100%',
               padding: '0.55rem 0.85rem',
-              backgroundColor: '#ffffff',
-              border: '1px solid #cbd5e1',
+              backgroundColor: openingFilter ? '#eff6ff' : '#ffffff',
+              border: openingFilter ? '1px solid #93c5fd' : '1px solid #cbd5e1',
               borderRadius: 'var(--radius-sm)',
-              color: '#334155',
+              color: openingFilter ? '#0066ff' : '#334155',
+              fontWeight: openingFilter ? 600 : 400,
               fontSize: '0.85rem',
               outline: 'none',
               cursor: 'pointer',
             }}
           >
-            <option value="">Job Role ⌵</option>
+            <option value="">Job Role ⌵ (All Roles)</option>
             {openings.map((op) => (
               <option key={op.id} value={op.id}>
                 {op.title}
@@ -570,26 +588,33 @@ export const CandidatesPage: React.FC = () => {
         </div>
 
         {/* Stage Filter Pill */}
-        <div style={{ flex: 1, minWidth: '130px' }}>
+        <div style={{ flex: 1, minWidth: '140px' }}>
           <select
             value={stageFilter}
             onChange={(e) => {
-              setStageFilter(e.target.value);
+              const val = e.target.value;
+              setStageFilter(val);
               setPage(1);
+              const next = new URLSearchParams(searchParams);
+              if (val) next.set('stage', val);
+              else next.delete('stage');
+              setSearchParams(next);
             }}
             style={{
               width: '100%',
               padding: '0.55rem 0.85rem',
-              backgroundColor: '#ffffff',
-              border: '1px solid #cbd5e1',
+              backgroundColor: stageFilter ? '#eff6ff' : '#ffffff',
+              border: stageFilter ? '1px solid #93c5fd' : '1px solid #cbd5e1',
               borderRadius: 'var(--radius-sm)',
-              color: '#334155',
+              color: stageFilter ? '#0066ff' : '#334155',
+              fontWeight: stageFilter ? 600 : 400,
               fontSize: '0.85rem',
               outline: 'none',
               cursor: 'pointer',
             }}
           >
-            <option value="">Stage ⌵</option>
+            <option value="">Stage ⌵ (All Stages)</option>
+            <option value="ACTIVE">Active Pipeline (In Progress)</option>
             <option value={Stage.APPLIED}>Applied</option>
             <option value={Stage.SCREENING}>Screening</option>
             <option value={Stage.INTERVIEW}>Interview</option>
@@ -604,22 +629,28 @@ export const CandidatesPage: React.FC = () => {
           <select
             value={sourceFilter}
             onChange={(e) => {
-              setSourceFilter(e.target.value);
+              const val = e.target.value;
+              setSourceFilter(val);
               setPage(1);
+              const next = new URLSearchParams(searchParams);
+              if (val) next.set('source', val);
+              else next.delete('source');
+              setSearchParams(next);
             }}
             style={{
               width: '100%',
               padding: '0.55rem 0.85rem',
-              backgroundColor: '#ffffff',
-              border: '1px solid #cbd5e1',
+              backgroundColor: sourceFilter ? '#eff6ff' : '#ffffff',
+              border: sourceFilter ? '1px solid #93c5fd' : '1px solid #cbd5e1',
               borderRadius: 'var(--radius-sm)',
-              color: '#334155',
+              color: sourceFilter ? '#0066ff' : '#334155',
+              fontWeight: sourceFilter ? 600 : 400,
               fontSize: '0.85rem',
               outline: 'none',
               cursor: 'pointer',
             }}
           >
-            <option value="">Source ⌵</option>
+            <option value="">Source ⌵ (All Sources)</option>
             {COMMON_SOURCES.map((src) => (
               <option key={src} value={src}>
                 {src}
@@ -653,6 +684,173 @@ export const CandidatesPage: React.FC = () => {
           </button>
         )}
       </div>
+
+      {/* Active Filter Chips Bar */}
+      {hasActiveFilters && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            flexWrap: 'wrap',
+            padding: '0.5rem 0.75rem',
+            backgroundColor: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: '0.825rem',
+          }}
+        >
+          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+            Filtered By:
+          </span>
+
+          {stageFilter && (
+            <span
+              style={{
+                backgroundColor: '#eff6ff',
+                color: '#0066ff',
+                border: '1px solid #bfdbfe',
+                borderRadius: 'var(--radius-full)',
+                padding: '0.2rem 0.6rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                fontWeight: 600,
+                fontSize: '0.8rem',
+              }}
+            >
+              <span>Stage: {stageFilter === 'ACTIVE' ? 'Active Pipeline (In Progress)' : stageFilter}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setStageFilter('');
+                  const next = new URLSearchParams(searchParams);
+                  next.delete('stage');
+                  next.delete('status');
+                  setSearchParams(next);
+                }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#0066ff', display: 'flex' }}
+                title="Remove stage filter"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+
+          {openingFilter && (
+            <span
+              style={{
+                backgroundColor: '#eff6ff',
+                color: '#0066ff',
+                border: '1px solid #bfdbfe',
+                borderRadius: 'var(--radius-full)',
+                padding: '0.2rem 0.6rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                fontWeight: 600,
+                fontSize: '0.8rem',
+              }}
+            >
+              <span>Role: {openings.find((o) => o.id === openingFilter)?.title || openingFilter}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setOpeningFilter('');
+                  const next = new URLSearchParams(searchParams);
+                  next.delete('opening');
+                  next.delete('jobOpeningId');
+                  setSearchParams(next);
+                }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#0066ff', display: 'flex' }}
+                title="Remove role filter"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+
+          {search && (
+            <span
+              style={{
+                backgroundColor: '#eff6ff',
+                color: '#0066ff',
+                border: '1px solid #bfdbfe',
+                borderRadius: 'var(--radius-full)',
+                padding: '0.2rem 0.6rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                fontWeight: 600,
+                fontSize: '0.8rem',
+              }}
+            >
+              <span>Search: "{search}"</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch('');
+                  const next = new URLSearchParams(searchParams);
+                  next.delete('search');
+                  setSearchParams(next);
+                }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#0066ff', display: 'flex' }}
+                title="Clear search"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+
+          {sourceFilter && (
+            <span
+              style={{
+                backgroundColor: '#eff6ff',
+                color: '#0066ff',
+                border: '1px solid #bfdbfe',
+                borderRadius: 'var(--radius-full)',
+                padding: '0.2rem 0.6rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                fontWeight: 600,
+                fontSize: '0.8rem',
+              }}
+            >
+              <span>Source: {sourceFilter}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setSourceFilter('');
+                  const next = new URLSearchParams(searchParams);
+                  next.delete('source');
+                  setSearchParams(next);
+                }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#0066ff', display: 'flex' }}
+                title="Remove source filter"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+
+          <button
+            onClick={handleResetFilters}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--danger)',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              textDecoration: 'underline',
+              marginLeft: '0.25rem',
+            }}
+          >
+            Clear all filters
+          </button>
+        </div>
+      )}
 
       {/* Error state */}
       {error && (

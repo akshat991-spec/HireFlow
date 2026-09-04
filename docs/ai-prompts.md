@@ -162,3 +162,20 @@ This document records the actual prompts used during the design, implementation,
 - **What you corrected (Mistake & Fix):**
   - **The Problem:** The initial implementation threw an unhandled `ReferenceError: Role is not defined` on the server because the `Role` enum was missing from imports in `dashboard.routes.ts`. Additionally, the frontend attempted to call the recruiter-only `/api/alerts/stalled` endpoint, rendering a red 403 error banner.
   - **The Correction:** Imported `Role` from `types`, conditionally bypassed `/api/alerts/stalled` on the client when `role === 'INTERVIEWER'`, fixed variable scoping in the quarterly trend chart, and verified zero-error rendering across both personas in the browser.
+
+### 19. Deep Linking & Filter Synchronization from Dashboard KPIs to Applications View
+- **Prompt:**
+  > "wherever i click i am forwarded to this all aplications page, the filter should be applied appropriately when clicking the respecting option"
+- **What you got:**
+  - Connected dashboard KPI cards, opening rows, and stage metrics directly to filtered views on the applications and job openings pages with full two-way URL parameter synchronization.
+  - Added an "Active Pipeline (In Progress)" filter option on the backend and frontend, and added highlighted filter chips displaying active filters with one-click removal and reset capabilities.
+- **What you corrected (Mistake & Fix):**
+  - **The Problem:**
+    1. Clicking "Assigned Roles" on the interviewer dashboard routed to `/candidates` (all applications) without filters instead of `/openings` (which shows the interviewer's assigned positions).
+    2. Clicking "My Candidates" (active candidate count: 6) navigated to `/candidates` with no query parameters, displaying all 7 candidates (including terminal/hired candidates) instead of filtering to active candidates in progress.
+    3. In `CandidatesPage.tsx`, the `searchParams` listener only checked `if (x !== null)`, which prevented filters from resetting when navigating between dashboard cards or returning to the unfiltered list via the sidebar.
+    4. There was no visual indication or filter chip showing users which filter was currently active from their dashboard click.
+  - **The Correction:**
+    1. Updated backend `GET /api/applications` to support `stage=ACTIVE` (and `status=active`) returning candidates in active stages (`APPLIED`, `SCREENING`, `INTERVIEW`, `OFFER`).
+    2. Updated `DashboardPage.tsx` links: "Assigned Roles" routes to `/openings`, "My Candidates" routes to `/candidates?stage=ACTIVE`, "My Interviews" routes to `/candidates?stage=INTERVIEW`, and assigned opening rows route to `/candidates?opening=<id>`.
+    3. Refactored `CandidatesPage.tsx` to synchronize all filters (`stage`, `opening`, `search`, `source`) with React Router's `searchParams`, added the "Active Pipeline" stage option, styled active dropdown pills, and introduced an "Active Filter Chips Bar" (`Filtered By: Stage: Active Pipeline ✕`) with one-click dismiss and reset actions.

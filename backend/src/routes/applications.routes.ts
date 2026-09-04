@@ -66,7 +66,9 @@ applicationsRouter.get(
         paramIndex++;
       }
 
-      if (stage) {
+      if (stage === 'ACTIVE' || req.query.status === 'active') {
+        conditions.push(`a.current_stage IN ('APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER')`);
+      } else if (stage) {
         conditions.push(`a.current_stage = $${paramIndex}`);
         values.push(stage);
         paramIndex++;
