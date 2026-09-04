@@ -5,16 +5,19 @@ import { query } from '../db/index.js';
 import { Role, User, UserPublic, AuthUserPayload } from '../types/index.js';
 import { UnauthorizedError, NotFoundError } from '../errors/AppError.js';
 
+// Auth logic — hashing, JWT, registration, login
 export class AuthService {
   static async hashPassword(password: string): Promise<string> {
     const salt = await bcrypt.genSalt(10);
     return bcrypt.hash(password, salt);
   }
 
+  // Compares plaintext against stored bcrypt hash
   static async verifyPassword(password: string, hash: string): Promise<boolean> {
     return bcrypt.compare(password, hash);
   }
 
+  // Signs a 7-day JWT with user id, email, name, role
   static generateToken(user: AuthUserPayload): string {
     return jwt.sign(
       {
@@ -28,6 +31,7 @@ export class AuthService {
     );
   }
 
+  // Verifies token and returns payload; throws if invalid or expired
   static verifyToken(token: string): AuthUserPayload {
     try {
       const decoded = jwt.verify(token, config.secretKey) as AuthUserPayload;
@@ -37,6 +41,7 @@ export class AuthService {
     }
   }
 
+  // Creates a new user; auto-assigns interviewers to 3 open applications
   static async register(
     name: string,
     email: string,
@@ -64,8 +69,6 @@ export class AuthService {
       [userId, name.trim(), email.trim().toLowerCase(), passwordHash, role, now, now]
     );
 
-    // If registered as an INTERVIEWER, assign to sample active candidates across open positions
-    // so their initial dashboard & "My Applications" view is pre-populated and not an empty page
     if (role === Role.INTERVIEWER) {
       try {
         const sampleApps = await dbQuery<{ id: string }>(
@@ -119,6 +122,7 @@ export class AuthService {
     };
   }
 
+  // Validates credentials and returns user + signed JWT
   static async login(
     email: string,
     password: string,
@@ -160,6 +164,7 @@ export class AuthService {
     };
   }
 
+  // Fetches public user fields by ID
   static async getUserById(
     id: string,
     dbQuery: typeof query = query

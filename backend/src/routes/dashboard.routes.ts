@@ -13,7 +13,6 @@ export const dashboardRouter = Router();
 
 const STALLED_THRESHOLD_MS = 10 * 24 * 60 * 60 * 1000;
 
-// GET /api/dashboard/metrics — Real-time Recruitment Pipeline Analytics
 dashboardRouter.get(
   '/metrics',
   authenticate,
@@ -21,27 +20,22 @@ dashboardRouter.get(
     try {
       const now = new Date();
 
-      // 1. Calculate careful UTC date boundaries
-      // Start of current week (Monday 00:00:00.000 UTC)
       const dayOfWeek = now.getUTCDay(); // 0 is Sunday, 1 is Monday...
       const diffToMonday = (dayOfWeek + 6) % 7;
       const startOfWeek = new Date(
         Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - diffToMonday, 0, 0, 0, 0)
       );
 
-      // Start of current month (1st day 00:00:00.000 UTC)
       const startOfMonth = new Date(
         Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0)
       );
 
-      // 12 weeks ago for the quarterly trend
       const twelveWeeksAgo = new Date(startOfWeek.getTime() - 11 * 7 * 24 * 60 * 60 * 1000);
       const stalledCutoff = new Date(now.getTime() - STALLED_THRESHOLD_MS);
 
       const isInterviewer = req.user?.role === Role.INTERVIEWER;
       const userId = req.user?.id;
 
-      // 2. Query Headline Metrics (scoped to assigned candidates if interviewer)
       const openPosQuery = isInterviewer
         ? query<{ count: string }>(
             `SELECT COUNT(DISTINCT a.job_opening_id)::text AS count 
@@ -152,13 +146,11 @@ dashboardRouter.get(
       const activeApplications = parseInt(activeAppsRes.rows[0]?.count || '0', 10);
       const hiresThisMonth = parseInt(hiresRes.rows[0]?.count || '0', 10);
 
-      // Merge unique applications with interview activity this week
       const interviewAppIds = new Set<string>();
       interviewEventsRes.rows.forEach((r) => interviewAppIds.add(r.application_id));
       currentInterviewAppsRes.rows.forEach((r) => interviewAppIds.add(r.id));
       const interviewsThisWeek = interviewAppIds.size;
 
-      // 3. Applications by Job Opening (scoped to assigned candidates if interviewer)
       const openingMetricsRes = isInterviewer
         ? await query<{
             job_opening_id: string;
@@ -209,7 +201,6 @@ dashboardRouter.get(
         activeApplications: parseInt(r.active_applications || '0', 10),
       }));
 
-      // 4. Applications by Stage (scoped to assigned candidates if interviewer)
       const stageCountsRes = isInterviewer
         ? await query<{
             stage: Stage;
@@ -265,7 +256,6 @@ dashboardRouter.get(
         };
       });
 
-      // 5. Applications Received Per Week over the Last Quarter (scoped if interviewer)
       const weeklyAppsRes = isInterviewer
         ? await query<{ applied_date: Date | string }>(
             `SELECT a.applied_date 
@@ -288,7 +278,6 @@ dashboardRouter.get(
             [twelveWeeksAgo.toISOString()]
           );
 
-      // Build 12 weekly buckets from twelveWeeksAgo to current week
       const weeklyTrend = [];
       for (let i = 0; i < 12; i++) {
         const bucketStart = new Date(twelveWeeksAgo.getTime() + i * 7 * 24 * 60 * 60 * 1000);
@@ -310,7 +299,6 @@ dashboardRouter.get(
         });
       }
 
-      // 6. Stalled Applications Summary (scoped if interviewer)
       const stalledAppsRes = isInterviewer
         ? await query<{
             id: string;

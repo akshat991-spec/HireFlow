@@ -78,7 +78,6 @@ export const StageProgressionBar: React.FC<StageProgressionBarProps> = ({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: '150px' }}>
-      {/* 5-segment track */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '3px', position: 'relative' }}>
         {STAGES.map((s, idx) => {
           const isActive = idx === currentIndex;
@@ -116,8 +115,6 @@ export const StageProgressionBar: React.FC<StageProgressionBarProps> = ({
           );
         })}
       </div>
-
-      {/* Stage Label Underneath */}
       <span
         style={{
           fontSize: '0.75rem',

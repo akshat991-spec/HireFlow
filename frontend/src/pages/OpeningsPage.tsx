@@ -13,7 +13,6 @@ export const OpeningsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Modals state
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingOpening, setEditingOpening] = useState<JobOpening | null>(null);
 
@@ -85,7 +84,6 @@ export const OpeningsPage: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
-      {/* Top Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.25rem' }}>Job Openings</h1>
@@ -102,8 +100,6 @@ export const OpeningsPage: React.FC = () => {
           <span>Post New Opening</span>
         </button>
       </div>
-
-      {/* Filter Tabs & Search Bar */}
       <div
         style={{
           display: 'flex',
@@ -175,8 +171,6 @@ export const OpeningsPage: React.FC = () => {
           />
         </div>
       </div>
-
-      {/* Error State */}
       {error && (
         <div
           style={{
@@ -197,8 +191,6 @@ export const OpeningsPage: React.FC = () => {
           </button>
         </div>
       )}
-
-      {/* Loading Skeleton */}
       {loading ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
           {[1, 2, 3].map((n) => (
@@ -328,8 +320,6 @@ export const OpeningsPage: React.FC = () => {
                   {opening.description}
                 </p>
               </div>
-
-              {/* Metrics & Action Footer */}
               <div
                 style={{
                   paddingTop: '1rem',
@@ -392,8 +382,6 @@ export const OpeningsPage: React.FC = () => {
           ))}
         </div>
       )}
-
-      {/* Modals */}
       <OpeningFormModal
         isOpen={isFormModalOpen}
         onClose={() => setIsFormModalOpen(false)}

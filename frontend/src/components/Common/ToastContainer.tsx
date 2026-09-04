@@ -51,7 +51,7 @@ export const ToastContainer: React.FC = () => {
     >
       {toasts.map((toast) => {
         const isError = toast.type === 'error';
-        // Green styling for success & info (silent confirmation notifications)
+
         const bgColor = isError ? '#fef2f2' : '#ecfdf5';
         const borderColor = isError ? '#fecaca' : '#6ee7b7';
         const textColor = isError ? '#991b1b' : '#065f46';

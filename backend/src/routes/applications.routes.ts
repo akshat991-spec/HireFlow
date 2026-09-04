@@ -24,7 +24,6 @@ import {
 
 export const applicationsRouter = Router();
 
-// GET /api/applications - List applications with server-side RBAC scoping
 applicationsRouter.get(
   '/',
   authenticate,
@@ -42,12 +41,10 @@ applicationsRouter.get(
       const sortBy = req.query.sortBy as string || 'applied_date';
       const sortOrder = (req.query.sortOrder as string || 'desc').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
-      // Build WHERE clauses
       const conditions: string[] = [];
       const values: unknown[] = [];
       let paramIndex = 1;
 
-      // Server-side RBAC filter: Interviewers only see assigned candidates
       if (user.role === Role.INTERVIEWER) {
         conditions.push(`
           a.id IN (
@@ -88,7 +85,6 @@ applicationsRouter.get(
 
       const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-      // Validate sort column
       const allowedSortColumns: Record<string, string> = {
         applied_date: 'a.applied_date',
         current_stage: 'a.current_stage',
@@ -101,12 +97,10 @@ applicationsRouter.get(
       };
       const orderColumn = allowedSortColumns[sortBy.toLowerCase()] || 'a.applied_date';
 
-      // Count query
       const countSql = `SELECT COUNT(*) as total FROM applications a ${whereClause}`;
       const countRes = await query<{ total: string }>(countSql, values);
       const total = parseInt(countRes.rows[0]?.total || '0', 10);
 
-      // Data query
       const dataSql = `
         SELECT 
           a.id,
@@ -203,14 +197,13 @@ function escapeCsvCell(val: unknown): string {
   return str;
 }
 
-// GET /api/applications/export - Export applications across all OPEN job openings as CSV (Recruiter only)
 applicationsRouter.get(
   '/export',
   authenticate,
   requireRecruiter,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // Query applications across all OPEN job openings
+
       const exportSql = `
         SELECT 
           a.id,
@@ -240,7 +233,6 @@ applicationsRouter.get(
         job_department: string;
       }>(exportSql);
 
-      // Fetch interviewer assignments for these applications
       let interviewersMap: Record<string, string[]> = {};
       if (dataRes.rows.length > 0) {
         const appIds = dataRes.rows.map((a) => a.id);
@@ -265,7 +257,6 @@ applicationsRouter.get(
         }
       }
 
-      // Build CSV headers and rows
       const headers = [
         'Application ID',
         'Candidate Name',
@@ -315,7 +306,6 @@ applicationsRouter.get(
   }
 );
 
-// GET /api/applications/:id - Detailed view with timeline and assigned panel
 applicationsRouter.get(
   '/:id',
   authenticate,
@@ -324,7 +314,6 @@ applicationsRouter.get(
     try {
       const applicationId = req.params.id;
 
-      // Fetch application details
       const appRes = await query<Application>(
         `SELECT 
           a.id,
@@ -353,7 +342,6 @@ applicationsRouter.get(
 
       const application = appRes.rows[0];
 
-      // Fetch assigned interviewers
       const interviewersRes = await query<UserPublic>(
         `SELECT u.id, u.name, u.email, u.role, ai.assigned_at as created_at
          FROM application_interviewers ai
@@ -363,7 +351,6 @@ applicationsRouter.get(
         [applicationId]
       );
 
-      // Fetch immutable timeline events
       const timelineRes = await query<TimelineEvent>(
         `SELECT 
           t.id,
@@ -404,7 +391,6 @@ applicationsRouter.get(
   }
 );
 
-// GET /api/applications/:id/timeline - Dedicated application timeline endpoint
 applicationsRouter.get(
   '/:id/timeline',
   authenticate,
@@ -460,7 +446,6 @@ const editApplicationSchema = z.object({
   notes: z.string().optional(),
 });
 
-// POST /api/applications - Create a new application (Recruiter only)
 applicationsRouter.post(
   '/',
   authenticate,
@@ -523,7 +508,6 @@ applicationsRouter.post(
   }
 );
 
-// PUT /api/applications/:id - Edit an application (Recruiter only)
 applicationsRouter.put(
   '/:id',
   authenticate,
@@ -572,7 +556,6 @@ const bulkActionSchema = z.object({
   note: z.string().optional(),
 });
 
-// POST /api/applications/bulk/advance - Bulk advance applications to their next linear stages (Recruiter only)
 applicationsRouter.post(
   '/bulk/advance',
   authenticate,
@@ -604,7 +587,6 @@ applicationsRouter.post(
   }
 );
 
-// POST /api/applications/bulk/reject - Bulk reject applications (Recruiter only)
 applicationsRouter.post(
   '/bulk/reject',
   authenticate,
@@ -643,7 +625,6 @@ const stageChangeSchema = z.object({
   note: z.string().optional(),
 });
 
-// POST /api/applications/:id/stage - Advance stage (Recruiter only)
 applicationsRouter.post(
   '/:id/stage',
   authenticate,
@@ -678,7 +659,6 @@ applicationsRouter.post(
   }
 );
 
-// POST /api/applications/:id/reject - Reject application (Recruiter only)
 applicationsRouter.post(
   '/:id/reject',
   authenticate,
@@ -709,7 +689,6 @@ applicationsRouter.post(
   }
 );
 
-// POST /api/applications/:id/reinstate - Reinstate application (Recruiter only)
 applicationsRouter.post(
   '/:id/reinstate',
   authenticate,
@@ -746,7 +725,6 @@ const assignInterviewerSchema = z.object({
   message: 'Either userId or userIds must be provided',
 });
 
-// POST /api/applications/:id/interviewers - Assign one or multiple interviewers to panel (Recruiter only)
 applicationsRouter.post(
   '/:id/interviewers',
   authenticate,
@@ -767,7 +745,6 @@ applicationsRouter.post(
         )
       );
 
-      // Verify all users exist and have INTERVIEWER role
       const usersToAssign: UserPublic[] = [];
       for (const uid of targetIds) {
         const userRes = await query<UserPublic>(
@@ -788,7 +765,6 @@ applicationsRouter.post(
         usersToAssign.push(targetUser);
       }
 
-      // Check existing assignments to prevent duplicates
       const existingRes = await query<{ user_id: string }>(
         'SELECT user_id FROM application_interviewers WHERE application_id = $1',
         [applicationId]
@@ -800,7 +776,7 @@ applicationsRouter.post(
 
       for (const targetUser of usersToAssign) {
         if (!existingSet.has(targetUser.id)) {
-          // Insert assignment
+
           await query(
             `INSERT INTO application_interviewers (application_id, user_id, assigned_at)
              VALUES ($1, $2, $3)
@@ -808,7 +784,6 @@ applicationsRouter.post(
             [applicationId, targetUser.id, now]
           );
 
-          // Record immutable timeline event
           const eventId = Math.random().toString(36).substring(2, 15);
           await query(
             `INSERT INTO timeline_events (id, application_id, event_type, actor_id, note_content, created_at)
@@ -851,7 +826,6 @@ applicationsRouter.post(
   }
 );
 
-// DELETE /api/applications/:id/interviewers/:userId - Remove interviewer from panel (Recruiter only)
 applicationsRouter.delete(
   '/:id/interviewers/:userId',
   authenticate,
@@ -866,7 +840,6 @@ applicationsRouter.delete(
         [applicationId, userId]
       );
 
-      // Record timeline event
       const eventId = Math.random().toString(36).substring(2, 15);
       await query(
         `INSERT INTO timeline_events (id, application_id, event_type, actor_id, note_content, created_at)
@@ -898,7 +871,6 @@ const feedbackSchema = z.object({
   feedback: z.string().min(1, 'Feedback text cannot be empty'),
 });
 
-// POST /api/applications/:id/feedback - Leave interviewer feedback (Assigned Interviewer or Recruiter)
 applicationsRouter.post(
   '/:id/feedback',
   authenticate,
@@ -915,7 +887,6 @@ applicationsRouter.post(
 
       const { feedback } = parseResult.data;
 
-      // Fetch current application stage
       const currentRes = await query<Application>(
         'SELECT current_stage FROM applications WHERE id = $1',
         [applicationId]
@@ -925,7 +896,6 @@ applicationsRouter.post(
       const now = new Date();
       const eventId = Math.random().toString(36).substring(2, 15);
 
-      // Record immutable feedback in timeline
       await query(
         `INSERT INTO timeline_events (id, application_id, event_type, actor_id, old_stage, new_stage, note_content, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,

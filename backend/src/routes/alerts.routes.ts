@@ -9,7 +9,6 @@ export const alertsRouter = Router();
 const STALLED_THRESHOLD_DAYS = 10;
 const ACTIVE_STAGES: Stage[] = [Stage.APPLIED, Stage.SCREENING, Stage.INTERVIEW, Stage.OFFER];
 
-// GET /api/alerts/stalled — Retrieve all active, un-dismissed stalled application alerts (Recruiter only)
 alertsRouter.get(
   '/stalled',
   authenticate,
@@ -18,8 +17,6 @@ alertsRouter.get(
     try {
       const cutoffDate = new Date(Date.now() - STALLED_THRESHOLD_DAYS * 24 * 60 * 60 * 1000);
 
-      // Query active applications whose current stage entered timestamp is older than threshold
-      // and whose specific (application_id, current_stage, stage_entered_at) period has not been dismissed
       const result = await query<{
         application_id: string;
         candidate_name: string;
@@ -57,7 +54,6 @@ alertsRouter.get(
             [cutoffDate.toISOString()]
           );
 
-      // Collect application IDs to fetch panel interviewers
       const appIds = result.rows.map((r) => r.application_id);
       const interviewersMap: Record<string, UserPublic[]> = {};
 
@@ -131,7 +127,6 @@ alertsRouter.get(
   }
 );
 
-// GET /api/alerts/count — Lightweight endpoint for navbar / sidebar badge
 alertsRouter.get(
   '/count',
   authenticate,
@@ -169,7 +164,6 @@ alertsRouter.get(
   }
 );
 
-// POST /api/alerts/stalled/:applicationId/dismiss — Dismiss an alert for the candidate's current stage period
 alertsRouter.post(
   '/stalled/:applicationId/dismiss',
   authenticate,
@@ -179,7 +173,6 @@ alertsRouter.post(
       const { applicationId } = req.params;
       const user = req.user!;
 
-      // Retrieve application to verify existence and get current stage and stage_entered_at
       const appResult = await query<{
         id: string;
         candidate_name: string;
@@ -199,7 +192,6 @@ alertsRouter.post(
       const app = appResult.rows[0];
       const dismissalId = `dsm_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
-      // Insert dismissal referencing the specific stage-period
       await query(
         `INSERT INTO stalled_alert_dismissals (id, application_id, user_id, stage, stage_entered_at, dismissed_at)
          VALUES ($1, $2, $3, $4, $5, $6)

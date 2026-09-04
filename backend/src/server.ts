@@ -6,8 +6,7 @@ const app = createApp();
 
 const server = app.listen(config.port, async () => {
   console.log(`🚀 HireFlow server listening on http://localhost:${config.port} [${config.nodeEnv}]`);
-  
-  // Database health check on startup
+
   const dbHealth = await checkDbHealth();
   if (dbHealth.status === 'connected') {
     console.log('✅ PostgreSQL database connection established.');
@@ -29,7 +28,6 @@ const server = app.listen(config.port, async () => {
   }
 });
 
-// Graceful shutdown handling
 async function handleShutdown(signal: string) {
   console.log(`\n🛑 Received ${signal}. Gracefully shutting down...`);
   server.close(async () => {
@@ -43,7 +41,6 @@ async function handleShutdown(signal: string) {
     process.exit(0);
   });
 
-  // Force shutdown if taking longer than 10 seconds
   setTimeout(() => {
     console.error('⚠️ Forcefully terminating server after timeout.');
     process.exit(1);

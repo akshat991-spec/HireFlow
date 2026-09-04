@@ -38,7 +38,7 @@ export const Header: React.FC<HeaderProps> = ({
         setDropdownAlerts(res.data.alerts);
       }
     } catch {
-      // Non-critical
+
     } finally {
       setLoadingAlerts(false);
     }
@@ -73,7 +73,6 @@ export const Header: React.FC<HeaderProps> = ({
     navigate('/alerts');
   };
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -93,7 +92,6 @@ export const Header: React.FC<HeaderProps> = ({
     };
   }, [isDropdownOpen]);
 
-  // Sync dropdown when global alerts event fires
   useEffect(() => {
     const handleGlobalAlertUpdate = () => {
       if (isDropdownOpen) {
@@ -115,7 +113,6 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="top-bar">
-      {/* Mobile Menu Hamburger Button */}
       <button
         className="mobile-menu-btn"
         onClick={onToggleMobileMenu}
@@ -123,8 +120,6 @@ export const Header: React.FC<HeaderProps> = ({
       >
         <Menu size={22} />
       </button>
-
-      {/* Workspace Context & Quick Search */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flex: 1, maxWidth: '440px' }}>
         <div
           style={{
@@ -170,10 +165,7 @@ export const Header: React.FC<HeaderProps> = ({
           />
         </div>
       </div>
-
-      {/* Right Controls: Role Badge + Alerts Bell + User Avatar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginLeft: 'auto', position: 'relative' }}>
-        {/* Role Badge */}
         <div
           style={{
             display: 'flex',
@@ -192,8 +184,6 @@ export const Header: React.FC<HeaderProps> = ({
           <Shield size={12} />
           <span>{isRecruiter ? 'Recruiter' : 'Interviewer'}</span>
         </div>
-
-        {/* Dynamic Alerts Bell Button */}
         <div style={{ position: 'relative' }}>
           <button
             ref={bellButtonRef}
@@ -238,8 +228,6 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             )}
           </button>
-
-          {/* Interactive Notification Popover Dropdown */}
           {isDropdownOpen && (
             <div
               ref={dropdownRef}
@@ -258,7 +246,6 @@ export const Header: React.FC<HeaderProps> = ({
                 animation: 'slideDown 0.15s ease-out',
               }}
             >
-              {/* Dropdown Header */}
               <div
                 style={{
                   padding: '0.85rem 1rem',
@@ -303,8 +290,6 @@ export const Header: React.FC<HeaderProps> = ({
                   <X size={16} />
                 </button>
               </div>
-
-              {/* Dropdown Body */}
               <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
                 {loadingAlerts ? (
                   <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
@@ -394,8 +379,6 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                 )}
               </div>
-
-              {/* Dropdown Footer */}
               <div
                 style={{
                   padding: '0.65rem 1rem',
@@ -425,8 +408,6 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           )}
         </div>
-
-        {/* User Avatar */}
         <div
           style={{
             width: '34px',

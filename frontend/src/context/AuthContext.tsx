@@ -7,9 +7,9 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string, role: Role) => Promise<void>;
-  loginAs: (email: string) => Promise<void>;
+  loginAs: (email: string) => Promise<void>; // quick-switch to a demo account
   logout: () => Promise<void>;
-  refreshUser: () => Promise<void>;
+  refreshUser: () => Promise<void>; // re-fetches /api/auth/me after role changes
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -117,7 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await api.post('/api/auth/logout', {}, { silent: true });
     } catch {
-      // Ignore
+
     } finally {
       localStorage.removeItem('hireflow_token');
       setCurrentUser(null);

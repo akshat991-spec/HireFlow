@@ -10,13 +10,16 @@ const PROGRESSION_ORDER = [
   Stage.HIRED,
 ];
 
+// Pure validation layer — throws before any DB write
 export class PipelineStateMachine {
+  // Only recruiters can trigger stage changes
   static validateRole(userRole: Role) {
     if (userRole !== Role.RECRUITER) {
       throw new ForbiddenError('Only recruiters can perform stage transitions');
     }
   }
 
+  // Must be exactly one step forward in the progression order
   static advanceStage(userRole: Role, currentStage: Stage, targetStage: Stage) {
     this.validateRole(userRole);
 
@@ -42,6 +45,7 @@ export class PipelineStateMachine {
     }
   }
 
+  // Ensures the app isn't already rejected
   static reject(userRole: Role, currentStage: Stage) {
     this.validateRole(userRole);
 
@@ -50,6 +54,7 @@ export class PipelineStateMachine {
     }
   }
 
+  // App must be REJECTED and have a known prior stage to return to
   static reinstate(userRole: Role, currentStage: Stage, rejectedFromStage: Stage | null) {
     this.validateRole(userRole);
 
@@ -65,7 +70,9 @@ export class PipelineStateMachine {
   }
 }
 
+// Executes DB writes — validates first, then updates stage and appends an immutable timeline event
 export class PipelineService {
+  // Advances to next stage and records a STAGE_CHANGE event
   static async advance(user: UserPublic, applicationId: string, targetStage: Stage, note?: string) {
     const currentRes = await query<Application>(
       'SELECT id, current_stage, rejected_from_stage FROM applications WHERE id = $1',
@@ -107,6 +114,7 @@ export class PipelineService {
     return targetStage;
   }
 
+  // Rejects and records which stage it came from (needed for reinstatement)
   static async reject(user: UserPublic, applicationId: string, note?: string) {
     const currentRes = await query<Application>(
       'SELECT id, current_stage FROM applications WHERE id = $1',
@@ -151,6 +159,7 @@ export class PipelineService {
     return { currentStage: Stage.REJECTED, rejectedFromStage: currentStage };
   }
 
+  // Returns app to exactly the stage it was rejected from — no arbitrary selection
   static async reinstate(user: UserPublic, applicationId: string, note?: string) {
     const currentRes = await query<Application>(
       'SELECT id, current_stage, rejected_from_stage FROM applications WHERE id = $1',
@@ -196,6 +205,7 @@ export class PipelineService {
     return restoreStage;
   }
 
+  // Each app processed independently — partial success is allowed
   static async bulkAdvance(
     user: UserPublic,
     applicationIds: string[],
@@ -299,7 +309,6 @@ export class PipelineService {
 
         const nextStage = PROGRESSION_ORDER[currentIndex + 1];
 
-        // Execute stage advance
         const targetStage = await this.advance(user, id, nextStage, note);
 
         results.push({

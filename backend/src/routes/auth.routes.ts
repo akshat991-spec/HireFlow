@@ -21,7 +21,6 @@ const registerSchema = z.object({
   role: z.nativeEnum(Role, { errorMap: () => ({ message: 'Role must be RECRUITER or INTERVIEWER' }) }),
 });
 
-// POST /api/auth/register
 authRouter.post('/register', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parseResult = registerSchema.safeParse(req.body);
@@ -52,7 +51,6 @@ authRouter.post('/register', async (req: Request, res: Response, next: NextFunct
   }
 });
 
-// POST /api/auth/login
 authRouter.post('/login', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parseResult = loginSchema.safeParse(req.body);
@@ -64,7 +62,6 @@ authRouter.post('/login', async (req: Request, res: Response, next: NextFunction
     const { email, password } = parseResult.data;
     const { user, token } = await AuthService.login(email, password);
 
-    // Set secure HTTP-only cookie
     res.cookie(config.sessionCookieName, token, {
       httpOnly: true,
       secure: config.isProduction,
@@ -84,7 +81,6 @@ authRouter.post('/login', async (req: Request, res: Response, next: NextFunction
   }
 });
 
-// POST /api/auth/logout
 authRouter.post('/logout', (req: Request, res: Response) => {
   res.clearCookie(config.sessionCookieName, {
     httpOnly: true,
@@ -101,7 +97,6 @@ authRouter.post('/logout', (req: Request, res: Response) => {
   res.status(200).json(response);
 });
 
-// GET /api/auth/me
 authRouter.get('/me', authenticate, (req: Request, res: Response) => {
   const response: ApiResponse<typeof req.user> = {
     success: true,
@@ -112,7 +107,6 @@ authRouter.get('/me', authenticate, (req: Request, res: Response) => {
   res.status(200).json(response);
 });
 
-// GET /api/auth/interviewers (Recruiters can list interviewers to assign)
 authRouter.get('/interviewers', authenticate, requireRecruiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const interviewersRes = await query<UserPublic>(

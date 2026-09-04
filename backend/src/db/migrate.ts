@@ -22,7 +22,6 @@ export async function runMigrations(): Promise<void> {
   console.log('✅ Database schema migrations executed successfully.');
 }
 
-// Allow direct execution via CLI
 if (process.argv[1] === __filename) {
   runMigrations()
     .then(async () => {

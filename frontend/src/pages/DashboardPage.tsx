@@ -87,7 +87,6 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
-      {/* Page Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 className="page-title">{isRecruiter ? 'Recruitment Dashboard' : 'Interviewer Workspace'}</h1>
@@ -113,8 +112,6 @@ export const DashboardPage: React.FC = () => {
           </button>
         </div>
       </div>
-
-      {/* Error state */}
       {error && (
         <div
           style={{
@@ -139,10 +136,7 @@ export const DashboardPage: React.FC = () => {
           </button>
         </div>
       )}
-
-      {/* 1. Primary Recruitment KPIs */}
       <div className="kpi-grid">
-        {/* Open Positions / Assigned Roles */}
         <NavLink
           to="/openings"
           style={{ textDecoration: 'none', color: 'inherit' }}
@@ -179,8 +173,6 @@ export const DashboardPage: React.FC = () => {
             <ArrowUpRight size={13} />
           </div>
         </NavLink>
-
-        {/* Active Candidates / My Candidates */}
         <NavLink
           to="/candidates?stage=ACTIVE"
           style={{ textDecoration: 'none', color: 'inherit' }}
@@ -217,8 +209,6 @@ export const DashboardPage: React.FC = () => {
             <ArrowUpRight size={13} />
           </div>
         </NavLink>
-
-        {/* Interviews This Week / My Interviews */}
         <NavLink
           to="/candidates?stage=INTERVIEW"
           style={{ textDecoration: 'none', color: 'inherit' }}
@@ -255,8 +245,6 @@ export const DashboardPage: React.FC = () => {
             <ArrowUpRight size={13} />
           </div>
         </NavLink>
-
-        {/* Hires This Month / Panel Hires */}
         <NavLink
           to="/candidates?stage=HIRED"
           style={{ textDecoration: 'none', color: 'inherit' }}
@@ -294,10 +282,7 @@ export const DashboardPage: React.FC = () => {
           </div>
         </NavLink>
       </div>
-
-      {/* 2. Middle Grid: Recruitment Stages & Influx Trend */}
       <div className="dashboard-two-col">
-        {/* Candidates by Recruitment Stage */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
@@ -363,8 +348,6 @@ export const DashboardPage: React.FC = () => {
             })}
           </div>
         </div>
-
-        {/* 12-Week Quarterly Application Volume Trend */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
@@ -377,8 +360,6 @@ export const DashboardPage: React.FC = () => {
               12 WEEKS
             </span>
           </div>
-
-          {/* Bar Chart Visualization */}
           <div
             style={{
               display: 'flex',
@@ -435,8 +416,6 @@ export const DashboardPage: React.FC = () => {
                 );
               })}
             </div>
-
-            {/* Numerical Day Labels */}
             <div
               style={{
                 display: 'flex',
@@ -480,10 +459,7 @@ export const DashboardPage: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* 3. Bottom Grid: Openings Overview + Actionable Attention Alerts */}
       <div className="dashboard-two-col">
-        {/* Applications by Job Opening */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -578,8 +554,6 @@ export const DashboardPage: React.FC = () => {
             </div>
           )}
         </div>
-
-        {/* Actionable Attention Alerts */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
@@ -629,8 +603,6 @@ export const DashboardPage: React.FC = () => {
                   ? 'Applications waiting over 10 days without stage movement:'
                   : 'Your assigned candidates waiting over 10 days without stage movement:'}
               </div>
-
-              {/* Direct candidate items instead of repetitive aggregate numbers */}
               {stalledAlerts.slice(0, 3).map((alert) => (
                 <NavLink
                   key={alert.applicationId}

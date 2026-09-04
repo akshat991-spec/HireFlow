@@ -20,13 +20,11 @@ export const AuthPage: React.FC = () => {
 
   const [mode, setMode] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
 
-  // Form fields
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [selectedRole, setSelectedRole] = useState<Role>(Role.RECRUITER);
 
-  // States
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -97,7 +95,6 @@ export const AuthPage: React.FC = () => {
           overflow: 'hidden',
         }}
       >
-        {/* Header Branding */}
         <div
           style={{
             padding: '2.25rem 2rem 1.5rem 2rem',
@@ -139,8 +136,6 @@ export const AuthPage: React.FC = () => {
             Hiring Workflow & Candidate Journey Platform
           </p>
         </div>
-
-        {/* Tab Toggle (Sign In vs Register) */}
         <div
           style={{
             display: 'flex',
@@ -192,8 +187,6 @@ export const AuthPage: React.FC = () => {
             Create Account
           </button>
         </div>
-
-        {/* Form Body */}
         <div style={{ padding: '1.75rem 2rem 2.25rem 2rem' }}>
           {error && (
             <div
@@ -216,7 +209,6 @@ export const AuthPage: React.FC = () => {
           )}
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
-            {/* Registration Name Field */}
             {mode === 'REGISTER' && (
               <div>
                 <label
@@ -253,8 +245,6 @@ export const AuthPage: React.FC = () => {
                 </div>
               </div>
             )}
-
-            {/* Email Field */}
             <div>
               <label
                 style={{
@@ -289,8 +279,6 @@ export const AuthPage: React.FC = () => {
                 />
               </div>
             </div>
-
-            {/* Password Field */}
             <div>
               <label
                 style={{
@@ -325,8 +313,6 @@ export const AuthPage: React.FC = () => {
                 />
               </div>
             </div>
-
-            {/* Role Selection (Registration only) */}
             {mode === 'REGISTER' && (
               <div>
                 <label
@@ -341,7 +327,6 @@ export const AuthPage: React.FC = () => {
                   Select Your Account Role
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                  {/* Recruiter Option Card */}
                   <div
                     onClick={() => setSelectedRole(Role.RECRUITER)}
                     style={{
@@ -369,8 +354,6 @@ export const AuthPage: React.FC = () => {
                       Full hiring authority, create openings, advance candidates & manage alerts.
                     </p>
                   </div>
-
-                  {/* Interviewer Option Card */}
                   <div
                     onClick={() => setSelectedRole(Role.INTERVIEWER)}
                     style={{
@@ -399,8 +382,6 @@ export const AuthPage: React.FC = () => {
                     </p>
                   </div>
                 </div>
-
-                {/* Pre-population notice */}
                 <div
                   style={{
                     marginTop: '0.65rem',
@@ -424,8 +405,6 @@ export const AuthPage: React.FC = () => {
                 </div>
               </div>
             )}
-
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={submitting}
@@ -461,8 +440,6 @@ export const AuthPage: React.FC = () => {
               )}
             </button>
           </form>
-
-          {/* 1-Click Quick Demo Login Section */}
           <div style={{ marginTop: '1.75rem', paddingTop: '1.5rem', borderTop: '1px solid #f1f5f9' }}>
             <div
               style={{

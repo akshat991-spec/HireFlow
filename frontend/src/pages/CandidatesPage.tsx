@@ -48,7 +48,6 @@ export const CandidatesPage: React.FC = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Search & Filter State
   const initialStage = searchParams.get('stage') || (searchParams.get('status') === 'active' ? 'ACTIVE' : '');
   const initialOpening = searchParams.get('opening') || searchParams.get('jobOpeningId') || '';
   const initialSearch = searchParams.get('search') || '';
@@ -59,7 +58,6 @@ export const CandidatesPage: React.FC = () => {
   const [openingFilter, setOpeningFilter] = useState(initialOpening);
   const [sourceFilter, setSourceFilter] = useState(initialSource);
 
-  // Sorting & Pagination State
   const [sortBy, setSortBy] = useState('applied_date');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [page, setPage] = useState(1);
@@ -68,18 +66,15 @@ export const CandidatesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Bulk Selection State
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [isConfirmingBulkReject, setIsConfirmingBulkReject] = useState(false);
   const [bulkSummaryData, setBulkSummaryData] = useState<BulkActionSummaryData | null>(null);
 
-  // CSV Export State
   const [isExporting, setIsExporting] = useState(false);
   const [exportSuccess, setExportSuccess] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
-  // Modals
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
@@ -130,7 +125,7 @@ export const CandidatesPage: React.FC = () => {
         setOpenings(res.data);
       }
     } catch {
-      // Non-critical
+
     }
   };
 
@@ -138,7 +133,6 @@ export const CandidatesPage: React.FC = () => {
     fetchOpenings();
   }, []);
 
-  // Synchronize filter state whenever URL searchParams change
   useEffect(() => {
     const stage = searchParams.get('stage') || '';
     const status = searchParams.get('status') || '';
@@ -170,7 +164,6 @@ export const CandidatesPage: React.FC = () => {
     setSearchParams({});
   };
 
-  // Selection handlers
   const handleToggleSelectAll = () => {
     if (selectedIds.length === applications.length && applications.length > 0) {
       setSelectedIds([]);
@@ -185,7 +178,6 @@ export const CandidatesPage: React.FC = () => {
     );
   };
 
-  // Bulk advance handler
   const handleBulkAdvance = async () => {
     if (selectedIds.length === 0 || isBulkProcessing) return;
     setIsBulkProcessing(true);
@@ -214,7 +206,6 @@ export const CandidatesPage: React.FC = () => {
     }
   };
 
-  // Bulk reject handler
   const handleBulkReject = async () => {
     if (selectedIds.length === 0 || isBulkProcessing) return;
     if (!isConfirmingBulkReject) {
@@ -249,7 +240,6 @@ export const CandidatesPage: React.FC = () => {
     }
   };
 
-  // CSV Export handler
   const handleExportCsv = async () => {
     setIsExporting(true);
     setExportError(null);
@@ -310,7 +300,6 @@ export const CandidatesPage: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', position: 'relative' }}>
-      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 className="page-title">
@@ -334,8 +323,6 @@ export const CandidatesPage: React.FC = () => {
           </div>
         )}
       </div>
-
-      {/* CSV Export Success / Error Banners */}
       {exportSuccess && (
         <div
           style={{
@@ -373,8 +360,6 @@ export const CandidatesPage: React.FC = () => {
           <span>{exportError}</span>
         </div>
       )}
-
-      {/* Role banner for interviewers */}
       {isInterviewer && (
         <div
           style={{
@@ -395,8 +380,6 @@ export const CandidatesPage: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Floating Selection Action Bar for Recruiters */}
       {isRecruiter && selectedIds.length > 0 && (
         <div
           style={{
@@ -504,8 +487,6 @@ export const CandidatesPage: React.FC = () => {
           )}
         </div>
       )}
-
-      {/* Multi-Criteria Search & Filter Controls Bar */}
       <div
         className="card"
         style={{
@@ -518,7 +499,6 @@ export const CandidatesPage: React.FC = () => {
           border: '1px solid #e2e8f0',
         }}
       >
-        {/* Search Input */}
         <div style={{ position: 'relative', flex: 2.2, minWidth: '240px' }}>
           <Search
             size={16}
@@ -551,8 +531,6 @@ export const CandidatesPage: React.FC = () => {
             }}
           />
         </div>
-
-        {/* Job Role Filter Pill */}
         <div style={{ flex: 1.2, minWidth: '150px' }}>
           <select
             value={openingFilter}
@@ -586,8 +564,6 @@ export const CandidatesPage: React.FC = () => {
             ))}
           </select>
         </div>
-
-        {/* Stage Filter Pill */}
         <div style={{ flex: 1, minWidth: '140px' }}>
           <select
             value={stageFilter}
@@ -623,8 +599,6 @@ export const CandidatesPage: React.FC = () => {
             <option value={Stage.REJECTED}>Rejected</option>
           </select>
         </div>
-
-        {/* Source Filter Pill */}
         <div style={{ flex: 1, minWidth: '130px' }}>
           <select
             value={sourceFilter}
@@ -658,8 +632,6 @@ export const CandidatesPage: React.FC = () => {
             ))}
           </select>
         </div>
-
-        {/* Export CSV Button */}
         {isRecruiter && (
           <button
             className="btn btn-gold"
@@ -684,8 +656,6 @@ export const CandidatesPage: React.FC = () => {
           </button>
         )}
       </div>
-
-      {/* Active Filter Chips Bar */}
       {hasActiveFilters && (
         <div
           style={{
@@ -851,8 +821,6 @@ export const CandidatesPage: React.FC = () => {
           </button>
         </div>
       )}
-
-      {/* Error state */}
       {error && (
         <div
           style={{
@@ -877,8 +845,6 @@ export const CandidatesPage: React.FC = () => {
           </button>
         </div>
       )}
-
-      {/* Zero Results Empty State (only when not loading and empty) */}
       {!loading && applications.length === 0 ? (
         <div
           className="card"
@@ -983,7 +949,6 @@ export const CandidatesPage: React.FC = () => {
                       }}
                       className="table-row-hover"
                     >
-                      {/* Checkbox for Recruiter */}
                       {isRecruiter && (
                         <td style={{ padding: '1rem 0.75rem 1rem 1.5rem' }}>
                           <input
@@ -993,8 +958,6 @@ export const CandidatesPage: React.FC = () => {
                           />
                         </td>
                       )}
-
-                      {/* Candidate: Avatar + Name + Subtitle Role/Email */}
                       <td style={{ padding: '1rem 1.25rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
                           <div
@@ -1033,8 +996,6 @@ export const CandidatesPage: React.FC = () => {
                           </div>
                         </div>
                       </td>
-
-                      {/* Job Opening */}
                       <td style={{ padding: '1rem 1.25rem' }}>
                         <div style={{ fontSize: '0.875rem', fontWeight: 500, color: '#0f172a' }}>
                           {app.job_title}
@@ -1043,26 +1004,18 @@ export const CandidatesPage: React.FC = () => {
                           {app.department}
                         </div>
                       </td>
-
-                      {/* Stage Progression Stepper Bar */}
                       <td style={{ padding: '1rem 1.25rem' }}>
                         <StageProgressionBar
                           currentStage={app.current_stage}
                           rejectedFromStage={app.rejected_from_stage}
                         />
                       </td>
-
-                      {/* Source */}
                       <td style={{ padding: '1rem 1.25rem', fontSize: '0.85rem', color: '#475569' }}>
                         {app.source}
                       </td>
-
-                      {/* Applied Date */}
                       <td style={{ padding: '1rem 1.25rem', fontSize: '0.85rem', color: '#64748b' }}>
                         {formattedDate}
                       </td>
-
-                      {/* Actions */}
                       <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.35rem' }}>
                           <button
@@ -1092,8 +1045,6 @@ export const CandidatesPage: React.FC = () => {
               </tbody>
             </table>
           </div>
-
-          {/* Footer with Metadata & Pagination Controls */}
           <div
             style={{
               padding: '0.85rem 1.5rem',
@@ -1108,14 +1059,10 @@ export const CandidatesPage: React.FC = () => {
               gap: '1rem',
             }}
           >
-            {/* Metadata Count */}
             <div>
               Showing <strong style={{ color: '#0f172a' }}>{startRecord}–{endRecord}</strong> of <strong style={{ color: '#0f172a' }}>{totalCount}</strong> applications
             </div>
-
-            {/* Pagination Actions */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-              {/* Page size selector */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
                 <span style={{ fontSize: '0.8rem' }}>Rows per page:</span>
                 <select
@@ -1139,8 +1086,6 @@ export const CandidatesPage: React.FC = () => {
                   <option value={50}>50</option>
                 </select>
               </div>
-
-              {/* Page Navigator */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
@@ -1168,15 +1113,11 @@ export const CandidatesPage: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Bulk Action Results Modal */}
       <BulkActionResultsModal
         isOpen={Boolean(bulkSummaryData)}
         onClose={() => setBulkSummaryData(null)}
         data={bulkSummaryData}
       />
-
-      {/* Modals */}
       <ApplicationDetailModal
         isOpen={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}

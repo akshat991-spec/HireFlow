@@ -14,7 +14,6 @@ const openingSchema = z.object({
   status: z.nativeEnum(OpeningStatus).optional(),
 });
 
-// GET /api/openings - List openings (Active by default, supports ?status=ARCHIVED or ?includeArchived=true)
 openingsRouter.get(
   '/',
   authenticate,
@@ -48,11 +47,10 @@ openingsRouter.get(
       } else if (statusFilter === 'OPEN') {
         conditions.push(`j.status = 'OPEN'`);
       } else if (!includeArchived) {
-        // Default view: ONLY active/open positions
+
         conditions.push(`j.status = 'OPEN'`);
       }
 
-      // Interviewers only see openings where they have assigned candidates
       if (user.role === Role.INTERVIEWER) {
         conditions.push(`
           j.id IN (
@@ -87,7 +85,6 @@ openingsRouter.get(
   }
 );
 
-// GET /api/openings/:id - View opening details + associated applications
 openingsRouter.get(
   '/:id',
   authenticate,
@@ -96,7 +93,6 @@ openingsRouter.get(
       const { id } = req.params;
       const user = req.user!;
 
-      // Fetch opening
       const openingRes = await query<JobOpening>(
         `SELECT id, title, department, description, status, created_at, updated_at 
          FROM job_openings 
@@ -110,7 +106,6 @@ openingsRouter.get(
 
       const opening = openingRes.rows[0];
 
-      // Interviewer access check
       if (user.role === Role.INTERVIEWER) {
         const assignedCheck = await query<{ count: string }>(
           `SELECT COUNT(*)::text as count
@@ -127,7 +122,6 @@ openingsRouter.get(
         }
       }
 
-      // Fetch associated applications (for Interviewer, only their assigned ones; for Recruiter, all in opening)
       let appSql = `
         SELECT 
           a.id,
@@ -174,7 +168,6 @@ openingsRouter.get(
   }
 );
 
-// POST /api/openings - Create job opening (Recruiter only)
 openingsRouter.post(
   '/',
   authenticate,
@@ -223,7 +216,6 @@ openingsRouter.post(
   }
 );
 
-// PUT /api/openings/:id - Edit job opening (Recruiter only)
 openingsRouter.put(
   '/:id',
   authenticate,
@@ -266,8 +258,6 @@ openingsRouter.put(
   }
 );
 
-// POST /api/openings/:id/archive - Archive opening (Recruiter only)
-// Preserves all associated applications
 openingsRouter.post(
   '/:id/archive',
   authenticate,
@@ -299,7 +289,6 @@ openingsRouter.post(
   }
 );
 
-// POST /api/openings/:id/restore - Restore opening (Recruiter only)
 openingsRouter.post(
   '/:id/restore',
   authenticate,

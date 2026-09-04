@@ -6,7 +6,6 @@ export async function seedDatabase(targetPool?: any): Promise<void> {
   const activePool = targetPool || defaultPool;
   console.log('🌱 Starting comprehensive database seeding...');
 
-  // 1. Demo Users
   const defaultPassword = 'password123';
   const passwordHash = await AuthService.hashPassword(defaultPassword);
 
@@ -47,7 +46,6 @@ export async function seedDatabase(targetPool?: any): Promise<void> {
     );
   }
 
-  // 2. Job Openings (5 OPEN, 1 ARCHIVED)
   const openings = [
     {
       id: 'job_eng_01',
@@ -103,14 +101,12 @@ export async function seedDatabase(targetPool?: any): Promise<void> {
     );
   }
 
-  // Calculate timestamps for realistic timeline and stalled alert testing
   const now = Date.now();
   const dayMs = 24 * 60 * 60 * 1000;
   const daysAgo = (d: number) => new Date(now - d * dayMs).toISOString();
 
-  // 3. Applications (25 diverse realistic candidates across all pipeline stages)
   const applications = [
-    // Job 1: Senior Full Stack Engineer
+
     {
       id: 'app_cand_01',
       job_opening_id: 'job_eng_01',
@@ -196,7 +192,6 @@ export async function seedDatabase(targetPool?: any): Promise<void> {
       stage_entered_at: daysAgo(1),
     },
 
-    // Job 2: Staff Cloud Infrastructure Engineer
     {
       id: 'app_cand_06',
       job_opening_id: 'job_eng_02',
@@ -246,7 +241,6 @@ export async function seedDatabase(targetPool?: any): Promise<void> {
       stage_entered_at: daysAgo(2),
     },
 
-    // Job 3: Lead Product Manager
     {
       id: 'app_cand_09',
       job_opening_id: 'job_prod_01',
@@ -308,7 +302,6 @@ export async function seedDatabase(targetPool?: any): Promise<void> {
       stage_entered_at: daysAgo(7),
     },
 
-    // Job 4: Principal Product Designer
     {
       id: 'app_cand_13',
       job_opening_id: 'job_design_01',
@@ -358,7 +351,6 @@ export async function seedDatabase(targetPool?: any): Promise<void> {
       stage_entered_at: daysAgo(4),
     },
 
-    // Job 5: Enterprise Account Executive
     {
       id: 'app_cand_17',
       job_opening_id: 'job_sales_01',
@@ -408,7 +400,6 @@ export async function seedDatabase(targetPool?: any): Promise<void> {
       stage_entered_at: daysAgo(3),
     },
 
-    // Job 6: Legacy QA Automation Engineer (Archived Opening)
     {
       id: 'app_cand_21',
       job_opening_id: 'job_arch_01',
@@ -447,7 +438,6 @@ export async function seedDatabase(targetPool?: any): Promise<void> {
     );
   }
 
-  // 4. Panel Assignments (Multiple interviewers assigned across candidates)
   const panelAssignments = [
     { appId: 'app_cand_01', userId: 'usr_interviewer_01' }, // David Kim -> Alex Rivera
     { appId: 'app_cand_02', userId: 'usr_interviewer_01' }, // Maya Patel -> Alex Rivera
@@ -472,9 +462,8 @@ export async function seedDatabase(targetPool?: any): Promise<void> {
     );
   }
 
-  // 5. Rich Immutable Timeline History & Feedback Entries
   const timelineEvents = [
-    // app_cand_01 (David Kim): Created -> Screening -> Interview -> Feedback -> Stalled
+
     {
       id: 'evt_01_01',
       appId: 'app_cand_01',
@@ -526,7 +515,6 @@ export async function seedDatabase(targetPool?: any): Promise<void> {
       createdAt: daysAgo(10),
     },
 
-    // app_cand_03 (James Wilson): Created -> Screening -> Interview -> Offer
     {
       id: 'evt_03_01',
       appId: 'app_cand_03',
@@ -568,7 +556,6 @@ export async function seedDatabase(targetPool?: any): Promise<void> {
       createdAt: daysAgo(4),
     },
 
-    // app_cand_04 (Elena Gomez): Created -> Screening -> Interview -> Offer -> Hired
     {
       id: 'evt_04_01',
       appId: 'app_cand_04',
@@ -620,7 +607,6 @@ export async function seedDatabase(targetPool?: any): Promise<void> {
       createdAt: daysAgo(6),
     },
 
-    // app_cand_06 (Priya Sharma): Multi-interviewer feedback
     {
       id: 'evt_06_01',
       appId: 'app_cand_06',
@@ -672,7 +658,6 @@ export async function seedDatabase(targetPool?: any): Promise<void> {
       createdAt: daysAgo(2),
     },
 
-    // app_cand_22 (Victoria Hughes): Rejected from Screening
     {
       id: 'evt_22_01',
       appId: 'app_cand_22',
@@ -704,7 +689,6 @@ export async function seedDatabase(targetPool?: any): Promise<void> {
       createdAt: daysAgo(9),
     },
 
-    // app_cand_23 (Kevin Larson): Rejected from Interview
     {
       id: 'evt_23_01',
       appId: 'app_cand_23',
@@ -756,7 +740,6 @@ export async function seedDatabase(targetPool?: any): Promise<void> {
       createdAt: daysAgo(7),
     },
 
-    // app_cand_24 (Gabriel Torres): Reinstated to SCREENING
     {
       id: 'evt_24_01',
       appId: 'app_cand_24',
@@ -798,7 +781,6 @@ export async function seedDatabase(targetPool?: any): Promise<void> {
       createdAt: daysAgo(2),
     },
 
-    // app_cand_25 (Arthur Pendelton): Reinstated to INTERVIEW
     {
       id: 'evt_25_01',
       appId: 'app_cand_25',
@@ -862,8 +844,6 @@ export async function seedDatabase(targetPool?: any): Promise<void> {
     );
   }
 
-  // 6. Dismissed Stalled Alert Example:
-  // app_cand_13 (Olivia Taylor) was entered into INTERVIEW 15 days ago, dismissed by recruiter
   await activePool.query(
     `INSERT INTO stalled_alert_dismissals (id, application_id, user_id, stage, stage_entered_at, dismissed_at)
      VALUES ($1, $2, $3, $4, $5, $6)
@@ -888,7 +868,6 @@ export async function seedDatabase(targetPool?: any): Promise<void> {
   console.log('   - 4 Demo Users (1 Recruiter, 3 Interviewers with password123)');
 }
 
-// Allow direct execution via CLI (npm run db:seed)
 if (process.argv[1] && process.argv[1].endsWith('seed.ts')) {
   seedDatabase()
     .then(async () => {

@@ -5,7 +5,6 @@ import { Role, AuthUserPayload } from '../types/index.js';
 import { UnauthorizedError, ForbiddenError, NotFoundError } from '../errors/AppError.js';
 import { query } from '../db/index.js';
 
-// Extend Express Request type
 declare global {
   namespace Express {
     interface Request {
@@ -14,6 +13,7 @@ declare global {
   }
 }
 
+// Extracts JWT from cookie or Bearer header
 export function extractToken(req: Request): string | null {
   if (req.cookies && req.cookies[config.sessionCookieName]) {
     return req.cookies[config.sessionCookieName];
@@ -25,6 +25,7 @@ export function extractToken(req: Request): string | null {
   return null;
 }
 
+// Verifies JWT and attaches user to req.user
 export async function authenticate(
   req: Request,
   res: Response,
@@ -44,6 +45,7 @@ export async function authenticate(
   }
 }
 
+// Middleware factory — rejects if user's role isn't in the allowed list
 export function requireRole(...allowedRoles: Role[]) {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
@@ -73,6 +75,7 @@ export type ApplicationPermission =
   | 'ASSIGN_INTERVIEWER'
   | 'LEAVE_FEEDBACK';
 
+// Object-level access guard — recruiters pass freely, interviewers must be assigned to the application
 export function requireApplicationAccess(
   permission: ApplicationPermission,
   dbQuery: typeof query = query
@@ -88,7 +91,6 @@ export function requireApplicationAccess(
         return next();
       }
 
-      // Check application exists
       const appRes = await dbQuery<{ id: string }>(
         'SELECT id FROM applications WHERE id = $1',
         [applicationId]
@@ -97,12 +99,10 @@ export function requireApplicationAccess(
         throw new NotFoundError(`Application with ID '${applicationId}' not found`);
       }
 
-      // Recruiters have full access to all applications and stage management
       if (req.user.role === Role.RECRUITER) {
         return next();
       }
 
-      // Interviewer access enforcement
       if (req.user.role === Role.INTERVIEWER) {
         if (
           permission === 'MODIFY_STAGE' ||
@@ -120,7 +120,6 @@ export function requireApplicationAccess(
           );
         }
 
-        // For VIEW or LEAVE_FEEDBACK, verify interviewer assignment
         if (permission === 'VIEW' || permission === 'LEAVE_FEEDBACK') {
           const assignmentRes = await dbQuery<{ application_id: string }>(
             'SELECT application_id FROM application_interviewers WHERE application_id = $1 AND user_id = $2',

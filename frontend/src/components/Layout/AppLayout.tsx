@@ -24,7 +24,7 @@ export const AppLayout: React.FC = () => {
         setAlertsCount(res.data.count);
       }
     } catch {
-      // Non-critical
+
     }
   };
 
@@ -55,7 +55,6 @@ export const AppLayout: React.FC = () => {
 
   return (
     <div className="app-layout">
-      {/* Mobile Drawer Backdrop */}
       <div
         className={`sidebar-backdrop ${isMobileMenuOpen ? 'active' : ''}`}
         onClick={closeMobileMenu}

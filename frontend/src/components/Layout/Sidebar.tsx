@@ -51,7 +51,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''} ${isMobileOpen ? 'mobile-open' : ''}`}>
-      {/* Brand Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'space-between', width: '100%', paddingBottom: '1.25rem', borderBottom: '1px solid var(--border-color)' }}>
         <NavLink
           to="/dashboard"
@@ -72,10 +71,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
         </NavLink>
-
-        {/* Mobile close button or Desktop collapse toggle */}
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          {/* Mobile Close X button */}
           {isMobileOpen && (
             <button
               onClick={onCloseMobile}
@@ -86,8 +82,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <X size={20} />
             </button>
           )}
-
-          {/* Desktop collapse toggle button */}
           {!isCollapsed && onToggleCollapse && !isMobileOpen && (
             <button
               onClick={onToggleCollapse}
@@ -110,8 +104,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
       </div>
-
-      {/* When collapsed on desktop, provide expand button right beneath brand */}
       {isCollapsed && onToggleCollapse && (
         <div style={{ marginTop: '0.75rem', width: '100%', display: 'flex', justifyContent: 'center' }}>
           <button
@@ -135,8 +127,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
       )}
-
-      {/* Navigation links */}
       <nav style={{ width: '100%' }}>
         <ul className="nav-menu">
           <li>
@@ -190,8 +180,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </li>
         </ul>
       </nav>
-
-      {/* User profile & demo account switcher */}
       <div style={{ position: 'relative', marginTop: 'auto', width: '100%' }}>
         <div
           className="user-profile"
@@ -229,8 +217,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
         </div>
-
-        {/* Switch Dropdown Menu */}
         {showSwitchDropdown && (
           <div
             style={{

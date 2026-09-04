@@ -1,7 +1,6 @@
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Load .env if present
 dotenv.config();
 
 export interface AppConfig {

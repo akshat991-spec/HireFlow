@@ -35,7 +35,6 @@ export const AlertsPage: React.FC = () => {
   const [dismissingId, setDismissingId] = useState<string | null>(null);
   const [dismissSuccess, setDismissSuccess] = useState<string | null>(null);
 
-  // Application Detail Modal state
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
@@ -80,7 +79,7 @@ export const AlertsPage: React.FC = () => {
         setAlerts((prev) => prev.filter((a) => a.applicationId !== alert.applicationId));
         setDismissSuccess(`Alert dismissed for ${alert.candidateName} in ${alert.currentStage}`);
         setTimeout(() => setDismissSuccess(null), 4000);
-        // Refresh alert badge in navigation if global event listener is registered
+
         window.dispatchEvent(new CustomEvent('hireflow:alerts-updated'));
       }
     } catch (err: any) {
@@ -103,7 +102,6 @@ export const AlertsPage: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
-      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 className="page-title">Candidate Inactivity Alerts</h1>
@@ -123,8 +121,6 @@ export const AlertsPage: React.FC = () => {
           </button>
         )}
       </div>
-
-      {/* Dismissal Success Banner */}
       {dismissSuccess && (
         <div
           style={{
@@ -143,8 +139,6 @@ export const AlertsPage: React.FC = () => {
           <span>{dismissSuccess}</span>
         </div>
       )}
-
-      {/* Error state */}
       {error && (
         <div
           style={{
@@ -169,8 +163,6 @@ export const AlertsPage: React.FC = () => {
           </button>
         </div>
       )}
-
-      {/* Interviewer Restricted View Notice */}
       {isInterviewer && (
         <div
           style={{
@@ -194,7 +186,6 @@ export const AlertsPage: React.FC = () => {
 
       {isRecruiter && (
         <>
-          {/* Summary Metric Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
             <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.25rem' }}>
               <div
@@ -278,8 +269,6 @@ export const AlertsPage: React.FC = () => {
               </div>
             </div>
           </div>
-
-          {/* Stalled Candidates Table */}
           {loading ? (
             <div className="card" style={{ padding: '3.5rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
               Checking stalled candidate applications...
@@ -361,7 +350,6 @@ export const AlertsPage: React.FC = () => {
                           }}
                           className="table-row-hover"
                         >
-                          {/* Candidate */}
                           <td style={{ padding: '1rem 1.5rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
                               <div
@@ -400,8 +388,6 @@ export const AlertsPage: React.FC = () => {
                               </div>
                             </div>
                           </td>
-
-                          {/* Job Opening */}
                           <td style={{ padding: '1rem 1.25rem' }}>
                             <div style={{ fontSize: '0.875rem', fontWeight: 500, color: '#0f172a' }}>
                               {alert.jobTitle}
@@ -410,8 +396,6 @@ export const AlertsPage: React.FC = () => {
                               {alert.department}
                             </div>
                           </td>
-
-                          {/* Stalled Duration Badge */}
                           <td style={{ padding: '1rem 1.25rem' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                               <span
@@ -437,13 +421,9 @@ export const AlertsPage: React.FC = () => {
                               </span>
                             </div>
                           </td>
-
-                          {/* Stage Progression Stepper */}
                           <td style={{ padding: '1rem 1.25rem' }}>
                             <StageProgressionBar currentStage={alert.currentStage} />
                           </td>
-
-                          {/* Interview Panel */}
                           <td style={{ padding: '1rem 1.25rem' }}>
                             {panel.length === 0 ? (
                               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
@@ -469,8 +449,6 @@ export const AlertsPage: React.FC = () => {
                               </div>
                             )}
                           </td>
-
-                          {/* Actions: View & Dismiss */}
                           <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
                               <button
@@ -511,8 +489,6 @@ export const AlertsPage: React.FC = () => {
           )}
         </>
       )}
-
-      {/* Application Detail Modal */}
       <ApplicationDetailModal
         isOpen={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}

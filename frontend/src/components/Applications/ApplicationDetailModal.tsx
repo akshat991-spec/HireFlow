@@ -90,14 +90,12 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Actions state
   const [actionLoading, setActionLoading] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
   const [stageNote, setStageNote] = useState('');
   const [showStageNoteInput, setShowStageNoteInput] = useState(false);
   const [pendingNextStage, setPendingNextStage] = useState<Stage | null>(null);
 
-  // Rejection & Reinstatement Confirmation States
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [showReinstateConfirm, setShowReinstateConfirm] = useState(false);
@@ -137,7 +135,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
         setAvailableInterviewers(res.data);
       }
     } catch {
-      // Non-critical
+
     }
   };
 
@@ -165,21 +163,17 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Next stage calculation
   const currentStage = application?.current_stage;
   const currentProgIndex = currentStage ? PROGRESSION_STAGES.indexOf(currentStage) : -1;
   const nextStage = currentProgIndex >= 0 && currentProgIndex < PROGRESSION_STAGES.length - 1
     ? PROGRESSION_STAGES[currentProgIndex + 1]
     : null;
 
-  // Interviewer assignments
   const assignedIds = new Set(interviewers.map((i) => i.id));
   const unassignedOptions = availableInterviewers.filter((i) => !assignedIds.has(i.id));
 
-  // Feedback events count
   const feedbackEvents = timeline.filter((e) => e.event_type === EventType.INTERVIEWER_FEEDBACK);
 
-  // Handle Assign Interviewer
   const handleAssignInterviewer = async () => {
     if (!applicationId || !selectedInterviewerId) return;
     setActionLoading(true);
@@ -200,7 +194,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
     }
   };
 
-  // Handle Remove Interviewer
   const handleRemoveInterviewer = async (userId: string, userName: string) => {
     if (!applicationId) return;
     setActionLoading(true);
@@ -218,7 +211,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
     }
   };
 
-  // Handle Stage Advancement
   const handleAdvanceStage = async (target: Stage) => {
     if (!applicationId) return;
     setActionLoading(true);
@@ -243,7 +235,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
     }
   };
 
-  // Handle Rejection
   const handleReject = async () => {
     if (!applicationId) return;
     setActionLoading(true);
@@ -266,7 +257,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
     }
   };
 
-  // Handle Reinstatement
   const handleReinstate = async () => {
     if (!applicationId) return;
     setActionLoading(true);
@@ -289,7 +279,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
     }
   };
 
-  // Handle Feedback Submission
   const handleSubmitFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!feedbackText.trim() || !applicationId) return;
@@ -348,10 +337,8 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
           border: '1px solid #e2e8f0',
         }}
       >
-        {/* 1. Top Candidate Profile Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-            {/* Candidate Avatar */}
             <div
               style={{
                 width: '68px',
@@ -427,12 +414,9 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
               </div>
             </div>
           </div>
-
-          {/* Action Buttons & Close */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
             {isRecruiter && application && (
               <>
-                {/* Reject Button (Only if not already rejected) */}
                 {application.current_stage !== Stage.REJECTED && !showRejectConfirm && !showStageNoteInput && (
                   <button
                     className="btn btn-secondary"
@@ -454,8 +438,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                     Reject Candidate
                   </button>
                 )}
-
-                {/* Advance Button (Only if next stage exists) */}
                 {application.current_stage !== Stage.REJECTED && nextStage && !showStageNoteInput && !showRejectConfirm && (
                   <button
                     className="btn btn-primary"
@@ -480,8 +462,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                     <ArrowRight size={16} />
                   </button>
                 )}
-
-                {/* Reinstate Button (Only if REJECTED) */}
                 {application.current_stage === Stage.REJECTED && !showReinstateConfirm && (
                   <button
                     className="btn btn-primary"
@@ -520,8 +500,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
             </button>
           </div>
         </div>
-
-        {/* 1A. Stage Advancement Confirmation Banner */}
         {showStageNoteInput && pendingNextStage && (
           <div
             style={{
@@ -579,8 +557,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
             </div>
           </div>
         )}
-
-        {/* 1B. Rejection Confirmation Banner */}
         {showRejectConfirm && (
           <div
             style={{
@@ -641,8 +617,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
             </div>
           </div>
         )}
-
-        {/* 1C. Reinstatement Confirmation Banner */}
         {showReinstateConfirm && (
           <div
             style={{
@@ -703,8 +677,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
             </div>
           </div>
         )}
-
-        {/* 2. Linear Pipeline Stepper Card (Exact matching design) */}
         {application && application.current_stage !== Stage.REJECTED && (
           <div
             className="stepper-scroll-container"
@@ -717,7 +689,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
             }}
           >
             <div className="stepper-track-min" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              {/* Connecting line */}
               <div
                 style={{
                   position: 'absolute',
@@ -757,7 +728,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                       zIndex: 3,
                     }}
                   >
-                    {/* Circle Indicator */}
                     {isPassed ? (
                       <div
                         style={{
@@ -806,8 +776,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                         }}
                       />
                     )}
-
-                    {/* Label */}
                     <span
                       style={{
                         fontSize: '0.725rem',
@@ -824,8 +792,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
             </div>
           </div>
         )}
-
-        {/* 3. Underline Tab Navigation */}
         <div style={{ borderBottom: '1px solid #e2e8f0', display: 'flex', gap: '2rem' }}>
           <button
             onClick={() => setActiveTab('overview')}
@@ -895,8 +861,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
             History ({timeline.length})
           </button>
         </div>
-
-        {/* 4. Tab Content */}
         {loading ? (
           <div style={{ padding: '3.5rem', textAlign: 'center', color: '#64748b' }}>
             Loading candidate details & timeline...
@@ -907,10 +871,8 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
           </div>
         ) : application ? (
           <>
-            {/* TAB: Overview (Two-column layout as in screenshot) */}
             {activeTab === 'overview' && (
               <div className="modal-two-col">
-                {/* Left Column: Resume Document & Experience & Skills */}
                 <div
                   style={{
                     backgroundColor: '#ffffff',
@@ -922,7 +884,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                     gap: '1.5rem',
                   }}
                 >
-                  {/* Resume File Header */}
                   <div
                     style={{
                       display: 'flex',
@@ -953,8 +914,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                       </button>
                     </div>
                   </div>
-
-                  {/* Experience Section */}
                   <div>
                     <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.75rem' }}>
                       Experience
@@ -973,8 +932,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                       </ul>
                     </div>
                   </div>
-
-                  {/* Skills Section */}
                   <div>
                     <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.75rem' }}>
                       Skills
@@ -997,8 +954,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                       ))}
                     </div>
                   </div>
-
-                  {/* Candidate Notes if present */}
                   {application.notes && (
                     <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '1rem' }}>
                       <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
@@ -1010,8 +965,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                     </div>
                   )}
                 </div>
-
-                {/* Right Column: Activity History (Timeline) */}
                 <div
                   style={{
                     backgroundColor: '#ffffff',
@@ -1028,7 +981,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                   </h3>
 
                   <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    {/* Vertical connecting line */}
                     <div
                       style={{
                         position: 'absolute',
@@ -1058,7 +1010,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                             zIndex: 2,
                           }}
                         >
-                          {/* Dot */}
                           <div
                             style={{
                               position: 'absolute',
@@ -1086,8 +1037,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                             {evt.event_type === EventType.INTERVIEWER_REMOVED && 'Interviewer removed from panel.'}
                             {evt.event_type === EventType.INTERVIEWER_FEEDBACK && `${evt.actor_name || 'Interviewer'} submitted feedback.`}
                           </div>
-
-                          {/* Feedback Quote Callout */}
                           {evt.event_type === EventType.INTERVIEWER_FEEDBACK && evt.note_content && (
                             <div
                               style={{
@@ -1112,8 +1061,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                 </div>
               </div>
             )}
-
-            {/* TAB: Interview Panel */}
             {activeTab === 'panel' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1222,11 +1169,8 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                 )}
               </div>
             )}
-
-            {/* TAB: Feedback Submission & Evaluation */}
             {activeTab === 'feedback' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                {/* Submit Feedback Box */}
                 <div style={{ backgroundColor: '#f8fafc', padding: '1.25rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                   <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem' }}>
                     Submit Candidate Feedback
@@ -1260,8 +1204,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                     </div>
                   </form>
                 </div>
-
-                {/* Submitted feedback list */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a' }}>
                     Recorded Evaluations ({feedbackEvents.length})
@@ -1299,8 +1241,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                 </div>
               </div>
             )}
-
-            {/* TAB: History (Audit Log) */}
             {activeTab === 'history' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
@@ -1335,7 +1275,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                         >
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                              {/* Event Badge */}
                               <span
                                 style={{
                                   padding: '0.2rem 0.6rem',
@@ -1351,8 +1290,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                               >
                                 {isRejection ? 'REJECTED' : isReinstated ? 'REINSTATED' : isStageChange ? 'STAGE ADVANCE' : isFeedback ? 'EVALUATION' : isPanel ? 'PANEL UPDATE' : evt.event_type.replace(/_/g, ' ')}
                               </span>
-
-                              {/* Stage Transition summary */}
                               {isStageChange && evt.old_stage && evt.new_stage && (
                                 <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a' }}>
                                   {evt.old_stage} → {evt.new_stage}

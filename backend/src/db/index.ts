@@ -3,7 +3,6 @@ import { config } from '../config.js';
 
 const { Pool } = pg;
 
-// Detect if SSL should be used (e.g. for Neon, Supabase, Render or when sslmode=require)
 const isSslRequired = config.databaseUrl.includes('sslmode=require') || 
                       config.databaseUrl.includes('supabase.co') || 
                       config.databaseUrl.includes('neon.tech') ||
@@ -89,10 +88,8 @@ export async function bootstrapRealDb(): Promise<void> {
   }
   const schemaSql = fs.readFileSync(schemaPath, 'utf-8');
 
-  // Execute schema tables & indexes
   await pool.query(schemaSql);
 
-  // Seed with realistic demo pipeline
   await seedDatabase(pool);
 }
 
@@ -115,6 +112,5 @@ export async function initInMemoryDb(): Promise<void> {
   const memPool = new MemPool();
   setPool(memPool);
 
-  // Seed in-memory database with full realistic dataset
   await seedDatabase(memPool);
 }
