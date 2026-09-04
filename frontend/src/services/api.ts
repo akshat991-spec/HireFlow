@@ -13,13 +13,16 @@ class ApiClient {
 
   async request<T>(endpoint: string, options: RequestOptions = {}): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('hireflow_token') : null;
     const defaultHeaders: HeadersInit = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     };
 
     const config: RequestInit = {
       ...options,
+      credentials: 'include',
       headers: {
         ...defaultHeaders,
         ...options.headers,
@@ -81,4 +84,5 @@ class ApiClient {
   }
 }
 
-export const api = new ApiClient();
+const apiBaseUrl = ((import.meta as any).env?.VITE_API_URL || '').replace(/\/$/, '');
+export const api = new ApiClient(apiBaseUrl);
